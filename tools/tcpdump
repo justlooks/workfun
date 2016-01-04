@@ -1,0 +1,2 @@
+# 抓取通过eth1网卡，不是3306端口的报文
+tcpdump -vv -i eth1 -s 10240 port not 3306
