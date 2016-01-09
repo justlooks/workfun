@@ -1,0 +1,36 @@
+缓存命中率计算
+命中率 ＝ keyspace_hits ／（ keyspace_hits ＋ keyspace_misses ）
+
+
+检查某项配置
+127.0.0.1:56379> config get maxmemory-policy
+1) "maxmemory-policy"
+2) "volatile-lru"
+
+选择数据库
+127.0.0.1:56379> select 1
+OK
+127.0.0.1:56379[1]>
+
+
+使用GETRANGE,SETRANGE对于字符串中某个字符(byte)进行设置
+127.0.0.1:56379[1]> set mykey "redis"
+OK
+127.0.0.1:56379[1]> getrange mykey 2 3
+"di"
+127.0.0.1:56379[1]> setrange mykey 3 "A"
+(integer) 5
+127.0.0.1:56379[1]> getrange mykey 2 3
+"dA"
+
+使用GETBIT,SETBIT对于字符中的某个bit位设置值
+127.0.0.1:56379[1]> get mykey
+"redAK"
+127.0.0.1:56379[1]> setbit mykey 9 1
+(integer) 1
+127.0.0.1:56379[1]> get mykey
+"redAK"
+127.0.0.1:56379[1]> setbit mykey 9 0
+(integer) 1
+127.0.0.1:56379[1]> get mykey
+"r%dAK"
