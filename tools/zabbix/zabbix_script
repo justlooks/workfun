@@ -1,0 +1,7 @@
+# zabbix 自定义脚本传参数
+在配置文件中定义如下
+UserParameter=redis.keys[*],cat /tmp/redisstat |  awk -F '[=,]' '/$1:/{print $ 2}'      # 注意awk这里print语句中$2之间需要空格
+然后在agent端重启服务
+service zabbix-agent restart
+然后在服务端发送zabbix_get命令
+/usr/local/software/zabbix/bin/zabbix_get -s 10.132.84.179 -k redis.keys[db0]
