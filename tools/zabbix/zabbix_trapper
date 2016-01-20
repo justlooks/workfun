@@ -1,0 +1,17 @@
+在配置中设置Configuration->Hosts->选择一个机器点create item
+然后填写以下 description ,type选zabbix trapper,key,name
+/usr/local/Software/zabbix/zabbix_linux/bin/zabbix_sender -z jumpserver -p 10051 -s MySQL_Server -k mykey.test -o 11 -vv
+zabbix_sender [20082]: DEBUG: answer [{"response":"success","info":"processed: 1; failed: 0; total: 1; seconds spent: 0.000089"}]
+info from server: "processed: 1; failed: 0; total: 1; seconds spent: 0.000089"
+sent: 1; skipped: 0; total: 1
+
+
+改用脚本收集数据
+cat data_collect.sh
+#!/bin/bash
+
+echo "MySQL_Server mykey.test 33
+MySQL_Server mykey.test2 57"
+
+在命令行运行下列命令进行数据收集
+bash data_collect.sh | /usr/local/Software/zabbix/zabbix_linux/bin/zabbix_sender -z jumpserver -p 10051 -i -
