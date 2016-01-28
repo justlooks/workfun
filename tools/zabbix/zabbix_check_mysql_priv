@@ -1,0 +1,41 @@
+#!/bin/bash
+
+BASEDIR="/data/mysql"
+USER="mysql"
+PRIVMSG=""
+PFLAG=0
+
+FILES1=$(find ${BASEDIR} \! -user ${USER} | wc -l)
+if [ "${FILES1}" -gt 0 ];then
+FLAGMSG=${FLAGMSG}"Error find file not belong user mysql. "
+else
+PRIVMSG=${PRIVMSG}"OK all files/directories have correct ownership. "
+fi
+
+FILES2=$(find ${BASEDIR} -maxdepth 0 -type d -perm 700 | wc -l)
+if [ "${FILES2}" -eq 1 ];then
+PRIVMSG=${PRIVMSG}"BASEDIR check pass "
+else
+FLAGMSG=${FLAGMSG}"BASEDIR check fail! "
+PFLAG=1
+fi
+FILES3=$(find ${BASEDIR} -mindepth 1 -type d \! -perm 700 | wc -l)
+if [ "${FILES3}" -eq 0 ];then
+PRIVMSG=${PRIVMSG}"subdir check pass "
+else
+FLAGMSG=${FLAGMSG}"subdir check fail! "
+PFLAG=1
+fi
+FILES4=$(find ${BASEDIR} -type f \! -perm 660 | wc -l)
+if [ "${FILES4}" -eq 0 ];then
+PRIVMSG=${PRIVMSG}"files check pass "
+else
+FLAGMSG=${FLAGMSG}"files check fail! "
+PFLAG=1
+fi
+
+if [ "${PFLAG}" -eq 1 ];then
+echo ${FLAGMSG}
+else
+echo ${PRIVMSG}
+fi
