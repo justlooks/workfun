@@ -1,0 +1,2 @@
+1,太多小文件在/var/spool/postfix/maildrop目录下，通过更改/etc/crontab文件的MAILTO=root为MAILTO=""来停止小文件写入,然后使用ls | xargs rm -rf;命令删除
+通过find / -xdev -printf '%h\n' | sort | uniq -c | sort -k 1 -n命令查找碎片最多的目录

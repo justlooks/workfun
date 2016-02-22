@@ -3,5 +3,14 @@
 UserParameter=redis.keys[*],cat /tmp/redisstat |  awk -F '[=,]' '/$1:/{print $ 2}'      # 注意awk这里print语句中$2之间需要空格
 然后在agent端重启服务
 service zabbix-agent restart
+在本地使用下列命令测试是否正常
+zabbix_agentd -t check_inode
 然后在服务端发送zabbix_get命令
 /usr/local/software/zabbix/bin/zabbix_get -s 10.132.84.179 -k redis.keys[db0]
+
+
+# 定义inode检测
+UserParameter=check_inode,df -i | awk 'NR>=2{aa=substr($5,0,length($5)-1);if(aa>max)(max=aa)}END{print max}'
+trigger设置
+inode consume too much on {HOST.NAME}
+{tqmalltest2:check_inode.last(0)}>30

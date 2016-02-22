@@ -1,0 +1,13 @@
+测试floodconnect,从https://raw.githubusercontent.com/hessu/aprsc/master/src/tools/floodconnect.c下载文件
+
+cc myfile.c -o myfile -lpthread
+
+iptables -A INPUT -p tcp --dport 80 --syn -m recent --name webpool --rcheck --seconds 60 --hitcount 10 -j LOG --log-prefix 'DDOS:' --log-ip-options
+iptables -A INPUT -p tcp --dport 80 --syn -m recent --name webpool --rcheck --seconds 60 --hitcount 10 -j DROP
+iptables -A INPUT -p tcp --dport 80 --syn -m recent --name webpool --set -j ACCEPT
+
+设置iptables阻止暴力破解
+iptables -N SSHSCAN
+iptables -A INPUT -p tcp --dport 22 -m state --state NEW -j SSHSCAN
+iptables -A SSHSCAN -m recent --set --name SSH
+iptables -A SSHSCAN -m recent --update --seconds 300 --hitcount 3 --name SSH -j DROP
