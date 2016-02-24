@@ -1,0 +1,13 @@
+关于redis安装细节
+1，设置vm.overcommit_memory=1
+2, 确认禁止 transparent huge pages功能/sys/kernel/mm/transparent_hugepage/enabled 设置为never
+3, 需要有备用swap
+4, 在写load 严重的实例中保证内存达到平时正常使用2倍的量
+
+关于升级
+使用slave来进行升级操作,等待同步完成（使用info命令观察master和slave上有同样数目的key),然后使用命令CONFIG SET slave-read-only no 来打开slave可写状态
+将写master的client切换到slave(可以通过monitor命令来确认master完全没有操作），然后通过命令 SLAVEOF NO ONE将slave移出replicaiton，最后关闭master
+
+
+关于redis的sql注入， 应用程序必须防止客户端可以拼接出lua脚本
+通过rename命令屏蔽掉config set/get命令
