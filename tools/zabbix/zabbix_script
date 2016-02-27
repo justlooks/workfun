@@ -14,3 +14,5 @@ UserParameter=check_inode,df -i | awk 'NR>=2{aa=substr($5,0,length($5)-1);if(aa>
 trigger设置
 inode consume too much on {HOST.NAME}
 {tqmalltest2:check_inode.last(0)}>30
+检测哪个目录消耗inode最多
+find / -xdev -printf '%h\n' | sort | uniq -c | sort -k 1 -n
