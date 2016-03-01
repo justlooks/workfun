@@ -1,0 +1,4 @@
+1,当数据库比较大时，特别innodb pool比较大，数据库关闭需要很长时间（超过10分钟），可以使用下面方法
+show global variables like '%dirt%'; 然后观察状态参数mysqladmin ext -i1 | grep Innodb_buffer_pool_pages_dirty，当降到接近0时,关闭之（有时候可能磁盘io不够，可以放大innodb_io_capacity参数来加速刷dirty page
+
+2,在关闭数据库前保存innodb pool 状态，以及在数据库启动前加载innodb pool状态，mysql5.7提供一个参数innodb_buffer_pool_dump_pct来控制加载pool的比例，默认只有25%会被加载

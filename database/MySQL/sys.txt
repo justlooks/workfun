@@ -1,0 +1,82 @@
+MySQL5.7.9之后设置一个mysql.sys@localhost用户作为sys表的DEFINER
+sys schema提供了一种手段访问 performance schema
+如果启用了收集额外数据的功能通过命令CALL sys.ps_setup_reset_to_default(TRUE);来回复默认设置
+
+mysql> SELECT * FROM host_summary_by_file_io;
++------------+------+------------+
+| host       | ios  | io_latency |
++------------+------+------------+
+| background | 1885 | 343.64 ms  |
+| localhost  | 1024 | 134.06 ms  |
++------------+------+------------+
+
+mysql> SELECT * FROM x$host_summary_by_file_io;
++------------+------+--------------+
+| host       | ios  | io_latency   |
++------------+------+--------------+
+| background | 1885 | 343635118680 |
+| localhost  | 1024 | 134063325810 |
++------------+------+--------------+
+
+x$为前缀的视图显示的值是未format之前的数字
+
+可以使用
+
+sys_config表用来进行配置
+为了避免直接读取该表，使用参数来读取
+mysql> select * from sys_config;
++--------------------------------------+-------+---------------------+--------+
+| variable                             | value | set_time            | set_by |
++--------------------------------------+-------+---------------------+--------+
+| diagnostics.allow_i_s_tables         | OFF   | 2016-01-20 07:30:18 | NULL   |
+| diagnostics.include_raw              | OFF   | 2016-01-20 07:30:18 | NULL   |
+| ps_thread_trx_info.max_length        | 65535 | 2016-01-20 07:30:18 | NULL   |
+| statement_performance_analyzer.limit | 100   | 2016-01-20 07:30:18 | NULL   |
+| statement_performance_analyzer.view  | NULL  | 2016-01-20 07:30:18 | NULL   |
+| statement_truncate_len               | 64    | 2016-01-20 07:30:18 | NULL   |
++--------------------------------------+-------+---------------------+--------+
+
+比如如果设置了@sys.diagnostics.include_raw 为true则mysql会使用@sys.diagnostics.include_raw的值，而不是sys_config表中的diagnostics.include_raw参数
+
+以下statement_truncate_len参数控制format_statement显示长度,设置为32后，这个session中调用format_statement就会一直使用32的长度，而系统表的默认设置长度仍然为64
+如果要设置回来则将系统参数设置为null即可
+
+mysql> SET @stmt = 'SELECT variable, value, set_time, set_by FROM sys_config';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SELECT format_statement(@stmt);
++----------------------------------------------------------+
+| format_statement(@stmt)                                  |
++----------------------------------------------------------+
+| SELECT variable, value, set_time, set_by FROM sys_config |
++----------------------------------------------------------+
+1 row in set (0.00 sec)
+
+mysql> SET @sys.statement_truncate_len = 32;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SELECT format_statement(@stmt);
++-----------------------------------+
+| format_statement(@stmt)           |
++-----------------------------------+
+| SELECT variabl ... ROM sys_config |
++-----------------------------------+
+1 row in set (0.00 sec)
+
+mysql> SET @sys.statement_truncate_len = NULL;
+
+mysql> SELECT format_statement(@stmt);
++----------------------------------------------------------+
+| format_statement(@stmt)                                  |
++----------------------------------------------------------+
+| SELECT variable, value, set_time, set_by FROM sys_config |
++----------------------------------------------------------+
+
+
+
+组件使用
+diagnostics()
+
+mysql> tee diag.out;
+mysql> CALL diagnostics(120, 30, 'current');
+mysql> notee;

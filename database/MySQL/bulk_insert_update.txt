@@ -1,0 +1,65 @@
+siingle insert
+[root@MySQL_Server /usr/local/Appserver_tmpdir]#time mysql -uroot --password=pass -P3308 --socket=/tmp/mysql3308.sock test -e "source single_insert.sql"
+
+real 0m14.874s
+user       0m0.197s
+sys  0m0.055s
+
+bulk insert
+#time mysql -uroot --password=pass -P3308 --socket=/tmp/mysql3308.sock test -e "source single_insert.sql"
+
+real 0m0.885s
+user       0m0.018s
+sys  0m0.005s
+
+bulk insert in a transaction
+#time mysql -uroot --password=pass -P3308 --socket=/tmp/mysql3308.sock test -e "SET autocommit=0;source single_insert.sql;commit"
+
+real 0m0.530s
+user       0m0.018s
+sys  0m0.004s
+
+bulk insert in a transaction  and disable check
+#time mysql -uroot --password=pass -P3308 --socket=/tmp/mysql3308.sock test -e "SET unique_checks=0;SET foreign_key_checks=0;SET autocommit=0;source single_insert.sql;commit"
+
+real 0m0.201s
+user       0m0.019s
+sys  0m0.005s
+
+
+单条update
+time mysql -uroot --password=SzjXDk5f5QzALKde -P3308 --socket=/tmp/mysql3308.sock test -e "source 3.update.sql"
+
+real 0m3.890s
+user       0m0.050s
+sys  0m0.017s
+
+single update in transaction and disable check
+#time mysql -uroot --password=SzjXDk5f5QzALKde -P3308 --socket=/tmp/mysql3308.sock test -e "SET unique_checks=0;SET foreign_key_checks=0;SET autocommit=0;source 3.update.sql;commit"
+
+real 0m0.587s
+user       0m0.034s
+sys  0m0.026s
+
+use temporary table speed bulk update
+#time mysql -uroot --password=SzjXDk5f5QzALKde -P3308 --socket=/tmp/mysql3308.sock test -e "source tmp.sql"
+
+real 0m0.112s
+user       0m0.009s
+sys  0m0.001s
+
+tmp.sql格式
+drop table if exist center_goods_tmp;
+create table center_goods_tmp (id int primary key auto_increment, gmt_modified datetime ,remarks varchar(3000)) engine=myisam;
+set @mytime=now();
+INSERT ignore INTO center_goods_tmp (remarks,gmt_modified,id) values ('3.0L,CHM,3.2L,CAL,2.8L,6缸,162KW,CNYB,C7',@mytime,36916)  ..... # bulk insert
+SET unique_checks=0;SET foreign_key_checks=0;set autocommit=0;
+update center_goods a ,center_goods_tmp b set a.remarks=b.remarks ,a.gmt_modified=b.gmt_modified where a.id=b.id;
+commit;
+
+关于bulk update 建议
+如果数据量比较大，可以分几次做bulk insert
+bulk insert 到MYISAM表时可以增大 bulk_insert_buffer_size 加速插入过程
+以上测试没有考虑到index的影响，如果表中有多个index，在插入前需要考虑到禁止对索引进行更新
+
+感谢数据团队钟熙耿提供测试数据
