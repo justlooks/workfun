@@ -1,0 +1,13 @@
+1.单条insert 变成bulk insert
+:%s/;$/,/      #将结尾的;号改为,
+:2,$s/^insert ignore into center_goods_base(second_cat_name,second_cat_id,third_cat_name,part_id,id,third_cat_id,gmt_modified,part_name,gmt_create,first_cat_id,first_cat_name) values/    第二行开始去掉第一个（号前的文本
+:%j         将多行并为一行
+:s/,$/;/    将最后一个字符改成;号
+
+2.bulk update
+将需要update的列放入临时表
+:%s/,gmt/ ,gmt/
+:%s/' '/','/     #中间插入,
+:%s/^\(.*\);$/(\1),/        #添加括号
+:%s/'\([0-9]\+\)')/\1)/     # 去掉id字段的点
+:3s/\(,[0-9]\+)\)/,@mytime\1/g    #插入时间参数
