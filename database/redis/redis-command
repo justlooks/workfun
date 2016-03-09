@@ -34,3 +34,6 @@ OK
 (integer) 1
 127.0.0.1:56379[1]> get mykey
 "r%dAK"
+
+发现最大的key
+redis-cli -a kmc8jdniHduwGd37Ndi --bigkeys
