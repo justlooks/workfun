@@ -1,0 +1,4 @@
+zk迁移工具
+git clone https://github.com/kshchepanovskyi/zkcopy.git
+迁移命令
+java -Dsource="10.132.51.105:2181/otter"      -Ddestination="10.162.69.197:2181/otter"      -Dthreads=10      -DremoveDeprecatedNodes=true      -jar target/zkcopy-*-jar-with-dependencies.jar;
