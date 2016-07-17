@@ -1,0 +1,5 @@
+innodb_buffer_pool_size  调大到1g
+添加 innodb_flush_method ＝ O_DIRECT
+调大临时表大小(从30M到300M)
+tmp_table_size                   = 300M
+max_heap_table_size              = 300M

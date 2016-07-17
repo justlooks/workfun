@@ -3,3 +3,32 @@ tcpdump -vv -i eth1 -s 10240 port not 3306
 
 # 写到文件中,从文件读取包交换信息
 tcpdump -r /tmp/aaa
+
+
+# 抓取20秒的实时查询
+tcpdump -i eth0 -s 0 -l -w - dst port 3306 -G 20 | strings
+
+将 tcpdump 生成的文件select 1之间的文本变成1行
+
+awk '{if($0~/^SELECT .+$/){if(str){print str;str=""};flag=1;next}if(flag==1){gsub(/^[ \t]+/,"",$0);gsub(/[ \t]+$/,"",$0);str=str" "$0}}' aa.txt
+
+文件处理
+删除四个字的内容
+:g/^....$/d
+删除空行
+:g/^[ \t]*$/d
+删除SET autocommit
+g/^SET autocommit/d
+删除commit
+g/^commit/d
+
+选出update语句
+grep -i 'update' legend_out.awk  > legend_out.update
+
+都转小写
+%s/SELECT/select/g
+%s/UPDATE/update/g
+去掉文本中的开头空格
+%s/^[ \t]\+//
+去掉前面的select
+%s/^select.*\(update.*\)$/\1/

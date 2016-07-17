@@ -1,0 +1,62 @@
+开启performance_schema 需要在配置文件中写入如下行
+performance_schema=ON
+
+同时可以在mysql启动时指定哪些数据收集，哪些不收集,可以使用pattern来匹配
+
+--performance-schema-instrument='wait/synch/cond/%=COUNTED'      #启动所有 condition synchronization instruments
+--performance-schema-instrument='%=OFF'		#关闭所有选项
+
+对于consumer也是一样
+--performance-schema-consumer-events-waits-history=ON     #比如启动events-waits-history表
+
+对于consumer的设置使用 setup_consumers表
+
+performance_schema调整表的大小基于下面参数的设置
+max_connections
+open_files_limit
+table_definition_cache
+table_open_cache
+
+
+root@localhost:performance_schema 02:32:42>SELECT * FROM setup_timers;
++-------------+-------------+
+| NAME        | TIMER_NAME  |
++-------------+-------------+
+| idle        | MICROSECOND |
+| wait        | CYCLE       |
+| stage       | NANOSECOND  |
+| statement   | NANOSECOND  |
+| transaction | NANOSECOND  |
++-------------+-------------+
+
+上面的表显示哪类consumer使用哪类时间单位
+
+
+看以上的时间具体是什么可以看下面的表
+root@localhost:performance_schema 02:42:24> SELECT * FROM performance_timers;
++-------------+-----------------+------------------+----------------+
+| TIMER_NAME  | TIMER_FREQUENCY | TIMER_RESOLUTION | TIMER_OVERHEAD |
++-------------+-----------------+------------------+----------------+
+| CYCLE       |      2198507462 |                1 |             24 |
+| NANOSECOND  |      1000000000 |                1 |             76 |
+| MICROSECOND |         1000000 |                1 |             84 |
+| MILLISECOND |            1037 |                1 |             80 |
+| TICK        |             108 |                1 |            268 |
++-------------+-----------------+------------------+----------------+
+
+CYCLE 取决于cpu的频率，其他的表示每秒发生多少次，tick和平台相关TIMER_RESOLUTION表示两次计数器发生的累加步长，
+TIMER_OVERHEAD is the minimal number of cycles of overhead to obtain one timing with the given timer. The overhead per event is twice the value displayed because the timer is invoked at the beginning and end of the event.   这个指标没看明白
+
+
+root@localhost:performance_schema 02:39:59>select * from setup_instruments;
++--------------------------------------------------------------------------------+---------+-------+
+| NAME                                                                           | ENABLED | TIMED |
++--------------------------------------------------------------------------------+---------+-------+
+| wait/synch/mutex/sql/TC_LOG_MMAP::LOCK_tc                                      | NO      | NO    |
+| wait/synch/mutex/sql/LOCK_des_key_file                                         | NO      | NO    |
+| wait/synch/mutex/sql/MYSQL_BIN_LOG::LOCK_commit                                | NO      | NO    |
+| wait/synch/mutex/sql/MYSQL_BIN_LOG::LOCK_commit_queue                          | NO      | NO    |
+| wait/synch/mutex/sql/MYSQL_BIN_LOG::LOCK_done                                  | NO      | NO    |
+| wait/synch/mutex/sql/MYSQL_BIN_LOG::LOCK_flush_queue                           | NO      | NO    |
+
+上面的表显示哪类instrument会被收集数据并评估时间

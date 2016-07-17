@@ -1,0 +1,7 @@
+os
+
+内存 
+/proc/sys/vm/dirty_ratio             #两者区别是第2个脏页达到这个数值启动后台flush，第一个，是达到这个数值block系统进行flush（调低为好）
+/proc/sys/vm/dirty_background_ratio
+
+在运行mysqld时候设置numa策略（使用innodb_numa_interleave参数控制，需要编译选项--innodb-numa-interleave）

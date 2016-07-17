@@ -1,0 +1,44 @@
+查看每个库的大小
+with fs
+as
+(
+    select database_id, type, size * 8.0 / 1024 size
+    from sys.master_files
+)
+select 
+    name,
+    (select sum(size) from fs where type = 0 and fs.database_id = db.database_id) DataFileSizeMB,
+    (select sum(size) from fs where type = 1 and fs.database_id = db.database_id) LogFileSizeMB
+from sys.databases db
+
+
+查看单库的文件路径，大小
+SELECT DB_NAME(database_id) AS DatabaseName,
+Name AS Logical_Name,
+Physical_Name, (size*8)/1024 SizeMB
+FROM sys.master_files
+WHERE DB_NAME(database_id) = 'MiddleDatabase'
+
+查看所有库和表
+select name= '['+s.name+'].['+t.name+']'  from sys.tables t,sys.schemas s where t.schema_id=s.schema_id;
+
+
+查看数据库配置
+select * from sys.configurations order by name;
+
+内存配置
+sp_configure 'awe enable', 1
+reconfigure
+go
+sp_configure 'min server memory' ,<min amount inMB>
+reconfigure
+go
+sp_configure 'max server memory', <max amount in MB>
+reconfigure
+go
+sp_configure 'index create memory', <number in kb>
+reconfigure
+go
+sp_configure 'min memory per query', <number in kb>
+reconfigure
+go

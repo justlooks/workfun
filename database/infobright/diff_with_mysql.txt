@@ -1,0 +1,3 @@
+1.infobright不支持auto_increment,primary key
+2. text类型不支持,不支持unsigned修饰符,建表需要显式指定字符集，字符序
+

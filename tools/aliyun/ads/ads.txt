@@ -1,0 +1,139 @@
+创建表组
+create tablegroup db_name.tablegroup_name options(minRedundancy=2 executeTimeout=3000);
+
+删除表组
+drop tablegroup db_name.tablegroup_name;
+
+删除表组属性
+alter tablegroup db_name.tablegroup_name key=value;
+
+创建表
+CREATE TABLE db_name.table_name ( 
+col1 bigint COMMENT 'col1', 
+col2 varchar COMMENT 'col2',
+col3 int COMMENT 'col3',
+col4 bigint COMMENT 'col4',
+col5 multivalue COMMENT 'col5 多值列', 
+ [primary key (col1, col3)]
+)
+PARTITION BY HASH KEY(col1) 
+PARTITION NUM 50
+[SUBPARTITION BY LIST (part_col2 long)]
+[SUBPARTITION OPTIONS (available_partition_num = 30)] 
+[CLUSTERED BY (col3,col4)]
+TABLEGROUP ads_test ;
+[options (updateType='{realtime | batch}')]
+
+实际创建表
+CREATE TABLE 
+tqmall_ads.adstestme (
+id int NOT NULL , 
+name varchar DEFAULT 'test' , 
+email varchar NOT NULL , 
+primary key (id)
+) 
+PARTITION BY HASH KEY(id) PARTITION NUM 100
+TABLEGROUP saint
+OPTIONS(UPDATETYPE='realtime')
+;
+
+关于数据导入
+如果建表选项是批量更新，则支持多种导入方式
+从odps导入数据
+需要授权
+Grant Describe,Select ON table wc_multi TO USER ALIYUN$garuda_build@aliyun.com ;
+导入后有延时
+LOAD DATA FROM 'odps://demo_bigdata/wc_multi' OVERWRITE INTO TABLE tqmall_ads.fromodps ;
+
+
+创建rds到ads的实时订阅通道
+通过 https://www.aliyun.com/product/dts/安装 dts-ads-writer 插件
+在rds上建立源表
+mysql> create table testme(id int auto_increment primary key,name varchar(20),email varchar(100));
+
+在ads上建表
+CREATE TABLE 
+tqmall_ads.rds2ads (
+id int NOT NULL , 
+name varchar NOT NULL , 
+email varchar NOT NULL , 
+primary key (id)
+) 
+PARTITION BY HASH KEY(id) PARTITION NUM 100
+TABLEGROUP saint
+OPTIONS(UPDATETYPE='realtime')
+;
+
+
+rds到ads表结构变换
+:%s/`//g
+:%s/([0-9]\+)//
+%s/AUTO_INCREMENT//
+%s/datetime/timestamp/
+%s/unsigned//
+%s/decimal/double
+%s/text/varchar/
+
+映射转换替换操作
+%s/^\s\+`\([a-z_]\+\).*$/\1/
+%s/\([a-z_]\+\)/"\1": "\1",/
+
+设置配置表映射
+
+{
+  "dtsAccessId": "dZq3m357mF7rIu31",
+  "dtsAccessKey": "QCtzSUdGBnrLBMGDyynjgdlMEFBCmj",
+  "dtsTunnelId": "dts_rds000wuh362w955289y_UQy",
+  "adsUserName": "dZq3m357mF7rIu31",
+  "adsPassword": "QCtzSUdGBnrLBMGDyynjgdlMEFBCmj",
+  "adsJdbcUrl": "jdbc:mysql://tqmall-ads-c388ceee.cn-hangzhou-1.ads.aliyuncs.com:10076/tqmall_ads",
+  "options": {
+    "messageBufferSize": 100000
+    "totalSize": 1000000,
+    "traceSql": true
+  },
+  "tables": [
+    {
+      "source": {
+        "primaryKeys": [
+          "id",
+        ],
+        "db": "dw1",
+        "table": "testme"
+      },
+      "target": {
+        "db": "tqmall_ads",
+        "table": "rds2ads"
+      },
+      "columnMapping": {
+        "name": "name",
+        "email": "email"
+      }
+    }
+  ]
+}
+
+通过mysql客户端可以直接连接ads
+#mysql -htqmall-ads-c388ceee.cn-hangzhou-1.ads.aliyuncs.com -P10076 -udZq3m357mF7rIu31 -pQCtzSUdGBnrLBMGDyynjgdlMEFBCmj
+
+局限性
+1,不同步DDL 操作
+2,更新conf file
+3,一个插件只能对应一个订阅通道,如果更新订阅通道中的对象则需要重启插件进程
+4,一个插件进程只对应一个ads的数据库
+5,rds和ads表主键需要完全一致
+6,在实时更新表中支持insert,delete操作，在主键冲突时ads不会返回错误信息而是根据insert语句不同做覆盖或者丢弃操作
+7,ads对delete的数据不会做马上删除操作，而是24小时内自动清理，如果要立即做清理，则使用下咧语句
+optimize table <tablename>; #索引修改之后立即生效也使用这个命令
+8,分析性数据库有延时，而且不保证记录更新会被在ads上顺序出现，但是一段时间之后最终会保证一致性
+9,没有内网连接地址
+10,批量更新表没有主键概念
+11,ads没有保留字列表文档，如果列名中有保留字建表语句会报错
+
+
+
+
+从rds导入到ads操作
+源库导出数据文件
+mysqldump -uroot -pPy1Pu7WmThSbnBTL -h127.0.0.1  -T /tmp/ dw1 DW1_DATE
+k

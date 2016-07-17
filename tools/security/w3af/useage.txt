@@ -1,0 +1,102 @@
+w3af>>> plugins
+crawl find_backdoors phpinfo web_spider
+audit blind_sqli file_upload os_commanding sqli xss
+w3af/plugins>>> back
+w3af>>> target
+w3af/config:target>>>  set target http://www.dianwoba.com
+w3af/config:target>>> back
+The configuration has been saved.
+w3af>>> start
+
+
+工作原理
+首先通过爬虫插件对整个网站进行map
+然后通过audit插件逐个审计
+最后output插件将结果通过不通格式展现
+
+
+扫描单独的网站目录
+设置target 为 http://domain/directory/
+enable 所有 audit 插件
+enable crawl.web_spider插件 ,并设置only_forward标记为true
+
+mapping是耗费时间的过程，w3af可以保存扫描过的url
+使用output.export_requests插件，保存的数据使用import_results插件加载
+
+w3af无法识别JavaScript, Flash and Java applets, 通过spider_man插件可以解决这个问题，但是要求用户手动浏览网站
+
+查看配置插件
+w3af/plugins>>> crawl desc web_spider
+配置插件
+w3af/plugins>>> crawl config web_spider
+查看所有参数
+w3af/plugins/crawl/config:web_spider>>> view
+设置参数
+w3af/plugins/crawl/config:web_spider>>> set only_forward True
+设置只扫子目录
+w3af/config:target>>> set target http://www.mafengwo.cn/yl/10439
+保存扫描的url
+w3af/plugins>>> output config export_requests
+w3af/plugins/output/config:export_requests>>> set output_file /tmp/mycheck.csv
+w3af/plugins>>> output export_requests
+查看被使用的插件
+w3af/plugins>>> list crawl enabled
+
+扫描结果的检查
+在kb中可以看详细的扫描结果
+w3af>>> kb
+w3af/kb>>> list vulns
+|-----------------------------------------------------------------------------|
+| Vulnerability | Description                                                 |
+|-----------------------------------------------------------------------------|
+| Cross site    | A Cross Site Scripting vulnerability was found at:          |
+| scripting     | "http://www.mafengwo.cn/group/s.php", using HTTP method     |
+| vulnerability | GET. The sent data was:                                     |
+|               | "q=pstjp%60pstjp&_j_index_suggest_input_sales=56" The       |
+|               | modified parameter was "q". This vulnerability was found in |
+|               | the request with id 1507.                                   |
+|-----------------------------------------------------------------------------|
+| Cross site    | A Cross Site Scripting vulnerability was found at:          |
+| scripting     | "http://www.mafengwo.cn/group/s.php", using HTTP method     |
+| vulnerability | GET. The sent data was: "q=zpwxl%20%3D" The modified        |
+|               | parameter was "q". This vulnerability was found in the      |
+|               | request with id 2980.                                       |
+|-----------------------------------------------------------------------------|
+
+将设置保存到配置文件
+w3af>>> profiles
+
+w3af/profiles>>> save_as demo
+Profile saved.
+文件被保存在 ~/.w3af/profiles/demo.pw3af 
+以下命令可以检查到有demo文件
+w3af/profiles>>> list
+加载profile
+w3af/profiles>>> use demo
+如果将文件和他人分享则需要另外选项保存,以便profile中你自己特有的路径不会在他人机器上报错
+w3af/profiles>>> save_as tutorial self-contained
+
+测试电商网址
+http://tqmall2.360cec.com
+
+所有步骤可以写在script中
+# cat find_me.w3af
+plugins
+crawl find_backdoors phpinfo web_spider
+audit blind_sqli file_upload os_commanding sqli xss
+back
+target
+set target http://yun.360cec.com/
+back
+start
+
+# w3af_console -s find_me.w3af
+
+
+Infrastructure  : 查看目标是否装了WAF
+Grep            : 检查http请求和响应信息是否含有关键字（password等)
+Output		: 输出保存到文件
+Mangle		：用于修改http 请求和响应内容
+Bruteforce	：用于在crawl阶段发现的登陆信息破解
+Evasion		: ??
+

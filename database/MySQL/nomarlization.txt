@@ -1,0 +1,2 @@
+查找unique key
+select NON_UNIQUE,INDEX_NAME,INDEX_SCHEMA,TABLE_NAME from information.STATISTICS where NON_UNIQUE=0 and INDEX_NAME<>'PRIMARY' and INDEX_SCHEMA not in ('mysql','information_schema','performance_schema','sys') group by INDEX_NAME,INDEX_SCHEMA order by INDEX_SCHEMA;

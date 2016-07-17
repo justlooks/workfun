@@ -1,0 +1,52 @@
+jstorm部署
+创建用户
+# useradd jstorm
+# usermod -s /sbin/nologin jstorm
+
+# wget http://42.121.19.155/jstorm/jstorm-2.1.1.zip
+# unzip jstorm-2.1.1.zip
+# mv jstorm-2.1.1.zip jstorm
+
+# chown jstorm:jstorm -R jstorm
+# sudo su - jstorm
+$ vi ~/.bashrc
+export JSTORM_HOME=/usr/local/software/jstorm
+export PATH=$PATH:$JSTORM_HOME/bin
+
+创建数据和日志目录
+# mkdir /data/jstorm
+# mkdir /data/jstorm/{data,logs}
+# chown jstorm:jstorm -R /data/jstorm/
+
+$ mkdir ~/.jstorm
+$ cp -f $JSTORM_HOME/conf/storm.yaml ~/.jstorm
+
+
+
+# wget http://mirrors.noc.im/apache/tomcat/tomcat-7/v7.0.69/bin/apache-tomcat-7.0.69.zip
+# unzip apache-tomcat-7.0.69.zip
+# mv apache-tomcat-7.0.69 apache-tomcat
+# cd apache-tomcat/webapps/
+# chown jstorm:jstorm -R apache-tomcat
+$ cd /usr/local/software/apache-tomcat/webapps/
+$ cp /usr/local/software/jstorm/jstorm-ui-2.1.1.war ./
+$ mv ROOT ROOT.old
+$ ln -s jstorm-ui-2.1.1 ROOT
+$ cd ../bin
+$ chmod u+x startup.sh
+$ chmod u+x *.sh
+
+启动
+nohup jstorm nimbus &
+nohup jstorm supervisor &
+
+调优
+1.当使用到cache时，worker内存2g远远不够，症状就是频繁full gc
+2.如果反序列化时间很长的话设置topology.kryo.register.required为true
+3.队列满时spout 线程会sleep一会，而不会不断轮询导致cpu超高,如果观察到spout的emptycpuratio比较高时需要设置这个参数
+
+
+
+1: nimbus默认4g 是不是很大？
+2: 指定topology workers=5 实际启动4个（每个要配置2G，本地mac总共8G，不知道是否此原因引起）
+3:如果把worker.memory.size调成1G验证第二步设想，oom permgen

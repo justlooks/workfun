@@ -1,0 +1,4 @@
+ master - slave  (异步复制,同mysql复制方式,master失败会丢少量数据)
+ master - slave  (同步双写，两个都写成功了返回，性能差10%，目前需要手工切换）
+
+

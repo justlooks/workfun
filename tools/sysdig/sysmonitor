@@ -1,0 +1,2 @@
+找出线程数最多的进程号和线程数,以及线程总数
+ps -eLf | awk '{total++;sum[$2]++}END{for(i in sum){if(sum[i]>maxnum){maxpid=i;maxnum=sum[i]}}print maxpid" "maxnum" "total}'

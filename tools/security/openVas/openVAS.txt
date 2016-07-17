@@ -1,0 +1,149 @@
+安装
+wget -q -O - http://www.atomicorp.com/installers/atomic |sh
+yum -y install openvas
+
+设置
+#openvas-setup
+就是以下操作步骤
+下载nvt
+/usr/sbin/openvas-nvt-sync
+下载cert数据
+/usr/sbin/openvas-certdata-sync
+下载scap数据 (时间比较长)
+/usr/sbin/openvas-scapdata-sync
+生成客户端证书 （原脚本路径是/usr/sbin/openvas-mkcert-client是错误的)
+/usr/bin/openvas-mkcert-client -n -i
+启动扫描器
+/sbin/service openvas-scanner restart
+
+/usr/sbin/openvasmd --migrate
+启动manager (此时无法启动，需要先运行openvasmd --rebuild --progress）
+/sbin/service openvas-manager restart
+继续无法启动，因为必须用下列命令 (bug http://lists.wald.intevation.org/pipermail/openvas-discuss/2015-November/009044.html)
+# openvasmd --listen=0.0.0.0
+启动gsad(改写如下项目)
+# vi /etc/sysconfig/gsad
+GSA_ADDRESS=0.0.0.0
+service gsad restart
+添加admin账户
+# openvasmd  --create-user=admin
+# openvasmd  --user=admin --new-password=wqeasd
+配置redis,打开如下选项
+unixsocket /tmp/redis.sock
+unixsocketperm 700
+
+[root@internal_server2 redis]# openvas-check-setup
+openvas-check-setup 2.3.0
+  Test completeness and readiness of OpenVAS-8
+  (add '--v6' or '--v7' or '--9'
+   if you want to check for another OpenVAS version)
+
+  Please report us any non-detected problems and
+  help us to improve this check routine:
+  http://lists.wald.intevation.org/mailman/listinfo/openvas-discuss
+
+  Send us the log-file (/tmp/openvas-check-setup.log) to help analyze the problem.
+
+  Use the parameter --server to skip checks for client tools
+  like GSD and OpenVAS-CLI.
+
+Step 1: Checking OpenVAS Scanner ...
+        OK: OpenVAS Scanner is present in version 5.0.5.
+        OK: OpenVAS Scanner CA Certificate is present as /var/lib/openvas/CA/cacert.pem.
+        OK: NVT collection in /var/lib/openvas/plugins contains 46542 NVTs.
+        WARNING: Signature checking of NVTs is not enabled in OpenVAS Scanner.
+        SUGGEST: Enable signature checking (see http://www.openvas.org/trusted-nvts.html).
+        OK: The NVT cache in /var/cache/openvas contains 46542 files for 46542 NVTs.
+        OK: redis-server is present in version 2.4.10.
+        OK: scanner (kb_location setting) is configured properly using the redis-server socket: /tmp/redis.sock
+        OK: redis-server is running and listening on socket: /tmp/redis.sock.
+        OK: redis-server configuration is OK and redis-server is running.
+Step 2: Checking OpenVAS Manager ...
+        OK: OpenVAS Manager is present in version 6.0.8.
+        OK: OpenVAS Manager client certificate is present as /var/lib/openvas/CA/clientcert.pem.
+        OK: OpenVAS Manager database found in /var/lib/openvas/mgr/tasks.db.
+        OK: Access rights for the OpenVAS Manager database are correct.
+        OK: At least one user exists.
+        OK: sqlite3 found, extended checks of the OpenVAS Manager installation enabled.
+        OK: OpenVAS Manager database is at revision 146.
+        OK: OpenVAS Manager expects database at revision 146.
+        OK: Database schema is up to date.
+        OK: OpenVAS Manager database contains information about 46538 NVTs.
+        OK: OpenVAS SCAP database found in /var/lib/openvas/scap-data/scap.db.
+        OK: OpenVAS CERT database found in /var/lib/openvas/cert-data/cert.db.
+        OK: xsltproc found.
+Step 3: Checking user configuration ...
+        WARNING: Your password policy is empty.
+        SUGGEST: Edit the /etc/openvas/pwpolicy.conf file to set a password policy.
+Step 4: Checking Greenbone Security Assistant (GSA) ...
+        OK: Greenbone Security Assistant is present in version 6.0.9.
+Step 5: Checking OpenVAS CLI ...
+        OK: OpenVAS CLI version 1.4.3.
+Step 6: Checking Greenbone Security Desktop (GSD) ...
+        SKIP: Skipping check for Greenbone Security Desktop.
+Step 7: Checking if OpenVAS services are up and running ...
+        OK: netstat found, extended checks of the OpenVAS services enabled.
+        OK: OpenVAS Scanner is running and listening on all interfaces.
+        OK: OpenVAS Scanner is listening on port 9391, which is the default port.
+        OK: OpenVAS Manager is running and listening on all interfaces.
+        OK: OpenVAS Manager is listening on port 9390, which is the default port.
+        WARNING: Greenbone Security Assistant is listening on port 9392 80, which is NOT the default port!
+        SUGGEST: Ensure Greenbone Security Assistant is listening on one of the following ports: 80, 443, 9392.
+/usr/bin/openvas-check-setup: line 790: [: too many arguments
+Step 8: Checking nmap installation ...
+        WARNING: Your version of nmap is not fully supported: 6.47
+        SUGGEST: You should install nmap 5.51 if you plan to use the nmap NSE NVTs.
+Step 10: Checking presence of optional tools ...
+        OK: pdflatex found.
+        OK: PDF generation successful. The PDF report format is likely to work.
+        OK: ssh-keygen found, LSC credential generation for GNU/Linux targets is likely to work.
+        OK: rpm found, LSC credential package generation for RPM based targets is likely to work.
+        WARNING: Could not find alien binary, LSC credential package generation for DEB based targets will not work.
+        SUGGEST: Install alien.
+        OK: nsis found, LSC credential package generation for Microsoft Windows targets is likely to work.
+        OK: SELinux is disabled.
+
+It seems like your OpenVAS-8 installation is OK.
+
+If you think it is not OK, please report your observation
+and help us to improve this check routine:
+http://lists.wald.intevation.org/mailman/listinfo/openvas-discuss
+Please attach the log-file (/tmp/openvas-check-setup.log) to help us analyze the problem.
+
+WARNING: Could not find alien binary, LSC credential package generation for DEB based targets will not work.
+        SUGGEST: Install alien.
+解决办法
+# wget http://download.opensuse.org/repositories/home:ods/CentOS_CentOS-6/home:ods.repo
+# yum install alien
+
+openvas建立任务在1%进度刮起
+
+
+
+登录报错
+Login failed. Waiting for OMP service to become available.
+
+检查安装
+#openvas-check-setup
+
+
+重启扫描器
+/etc/init.d/openvas-scanner restart
+
+
+
+# openvas-mkcert-client -n -i
+
+yum downgrade openvas-manager
+
+发现日志报数据库被锁错误
+
+解决方法
+fuser /var/lib/openvas/mgr/tasks.db
+/var/lib/openvas/mgr/tasks.db:  5466 18524
+然后kill 5466 18524 两个进程
+
+openvas-check-setup 脚本运行错误（检查gsad启动两个端口不正常）
+使用最新的版本
+https://svn.wald.intevation.org/svn/openvas/trunk/tools/openvas-check-setup
+

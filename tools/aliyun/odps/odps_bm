@@ -1,0 +1,99 @@
+1.首先安装otps客户端
+vi odpscmd_public/conf/odps_config.ini
+编辑如下内容
+project_name=demo_bigdata   #需要修改
+access_id=dZq3m357mF7rIu31    #需要修改
+access_key=QCtzSUdGBnrLBMGDyynjgdlMEFBCmj      #需要修改
+end_point=http://service.odps.aliyun.com/api
+tunnel_endpoint=http://dt.odps.aliyun.com
+log_view_host=http://logview.odps.aliyun.com
+https_check=true
+
+
+2 客户端命令行使用2 客户端命令行使用
+#./odpscmd
+Aliyun ODPS Command Line Tool
+Version 0.20.2
+@Copyright 2015 Alibaba Cloud Computing Co., Ltd. All rights reserved.
+odps@ demo_bigdata>
+
+数据上传
+创建表
+CREATE TABLE wc_in (word string);
+
+
+创建数据文件
+#cat wc_example.txt
+my world
+
+tunnel上传命令
+odps@ demo_bigdata>tunnel upload /root/wc_example.txt wc_in;
+Upload session: 201603171208244080870a02624a34
+Start upload:/root/wc_example.txt
+Total bytes:9    Split input to 1 blocks
+2016-03-17 12:08:24     scan block: '1'
+2016-03-17 12:08:24     scan block complete, blockid=1
+2016-03-17 12:08:24     upload block: '1'
+2016-03-17 12:08:25     upload block complete, blockid=1
+OK
+
+odps@ demo_bigdata>select * from wc_in;
+
+ID = 20160317060602425gz7r9bjc2
+Log view:
+http://logview.odps.aliyun.com/logview/?h=http://service.odps.aliyun.com/api&p=demo_bigdata&i=20160317060602425gz7r9bjc2&token=M3hCOU1sZTEyV1p2dWhOZmQzOTFiUXk4Y0VvPSxPRFBTX09CTzoxMjI1MTk1ODIzOTk1ODY4LDE0NTg3OTk1NjIseyJTdGF0ZW1lbnQiOlt7IkFjdGlvbiI6WyJvZHBzOlJlYWQiXSwiRWZmZWN0IjoiQWxsb3ciLCJSZXNvdXJjZSI6WyJhY3M6b2RwczoqOnByb2plY3RzL2RlbW9fYmlnZGF0YS9pbnN0YW5jZXMvMjAxNjAzMTcwNjA2MDI0MjVnejdyOWJqYzIiXX1dLCJWZXJzaW9uIjoiMSJ9
++------+
+| word |
++------+
+| my world |
++------+
+
+多列表
+CREATE TABLE wc_multi (id int,name string,email string);
+
+创建数据文件
+#cat wc_example.txt
+1,'alex','alex@yahoo.com'
+2,'xela','xela@gmail.com'
+
+odps@ demo_bigdata>tunnel upload /root/wc_example.txt wc_multi
+                  >;
+Upload session: 201603171413563582870a0262d404
+Start upload:/root/wc_example.txt
+Total bytes:52	 Split input to 1 blocks
+2016-03-17 14:13:56	scan block: '1'
+2016-03-17 14:13:56	scan block complete, blockid=1
+2016-03-17 14:13:56	upload block: '1'
+2016-03-17 14:13:57	upload block complete, blockid=1
+upload complete, average speed is 52 bytes/s
+OK
+odps@ demo_bigdata>select email from wc_multi;
+
+ID = 20160317061409206g83fn8jc2
+Log view:
+http://logview.odps.aliyun.com/logview/?h=http://service.odps.aliyun.com/api&p=demo_bigdata&i=20160317061409206g83fn8jc2&token=V1lnQ3hJS01WWmVLZW84aWt3Z2lkdVBXMW9vPSxPRFBTX09CTzoxMjI1MTk1ODIzOTk1ODY4LDE0NTg4MDAwNDkseyJTdGF0ZW1lbnQiOlt7IkFjdGlvbiI6WyJvZHBzOlJlYWQiXSwiRWZmZWN0IjoiQWxsb3ciLCJSZXNvdXJjZSI6WyJhY3M6b2RwczoqOnByb2plY3RzL2RlbW9fYmlnZGF0YS9pbnN0YW5jZXMvMjAxNjAzMTcwNjE0MDkyMDZnODNmbjhqYzIiXX1dLCJWZXJzaW9uIjoiMSJ9
+2016-03-17 14:14:34 M1_Stg1_job0:0/0/1[0%]
+2016-03-17 14:14:40 M1_Stg1_job0:0/0/1[0%]
+Summary:
+resource cost: cpu 0.00 Core * Min, memory 0.00 GB * Min
+inputs:
+	demo_bigdata.wc_multi: 2 (760 bytes)
+outputs:
+Job run time: 5.000
+Job run mode: fuxi job
+M1_Stg1:
+	instance count: 1
+	run time: 5.000
+	instance time:
+		min: 0.000, max: 0.000, avg: 0.000
+	input records:
+		input: 2  (min: 2, max: 2, avg: 2)
+	output records:
+		M1_Stg1FS_3058357: 2  (min: 2, max: 2, avg: 2)
+
++-------+
+| email |
++-------+
+| 'alex@yahoo.com' |
+| 'xela@gmail.com' |
++-------+

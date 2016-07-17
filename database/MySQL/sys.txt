@@ -1,6 +1,8 @@
+使用sys需要的权限包括对于所有sys表，视图的select权限，对所有sys存储过程函数的execute权限，对于sys_config表的insert权限，另外还有sys存储过程函数的额外权限，具体见文档描述
 MySQL5.7.9之后设置一个mysql.sys@localhost用户作为sys表的DEFINER
 sys schema提供了一种手段访问 performance schema
 如果启用了收集额外数据的功能通过命令CALL sys.ps_setup_reset_to_default(TRUE);来回复默认设置
+sys中的每个表对应了一个x$为前缀的视图（version没有对应视图)
 
 mysql> SELECT * FROM host_summary_by_file_io;
 +------------+------+------------+
@@ -80,3 +82,659 @@ diagnostics()
 mysql> tee diag.out;
 mysql> CALL diagnostics(120, 30, 'current');
 mysql> notee;
+
+
+
+可以使用sys本身的存储过程来启动performance schema额外的instrument和consumer
+CALL sys.ps_setup_enable_instrument('wait');
+CALL sys.ps_setup_enable_instrument('stage');
+CALL sys.ps_setup_enable_instrument('statement');
+CALL sys.ps_setup_enable_consumer('current');
+CALL sys.ps_setup_enable_consumer('history_long');
+保存设置使用
+CALL sys.ps_setup_reset_to_default(TRUE);
+
+
+使用msyqldump倒出sys数据的方法（注意，默认不导出）
+mysqldump --databases --routines sys > sys_dump.sql
+mysqlpump sys > sys_dump.sql
+
+使用session表信息可以评估query性能
+其中progress report要求events_stages_current启动,否则progress列的值就是NULL
+
+用host_summary_by_file_io表信息查看每个host发出的io量和io延时累计时间信息
+root@localhost:sys 11:40:32>select * from  host_summary_by_file_io;
++---------------+--------+------------+
+| host          | ios    | io_latency |
++---------------+--------+------------+
+| background    | 285905 | 12.67 m    |
+| localhost     | 438611 | 6.63 m     |
+| 127.0.0.1     | 602003 | 3.48 m     |
+| 10.162.67.71  |  20706 | 46.04 s    |
+| 10.168.64.242 |  56847 | 42.58 s    |
+| 10.162.69.197 |   1731 | 6.62 s     |
+| 10.161.233.80 | 268635 | 1.06 s     |
+| 10.168.22.192 |   1360 | 613.94 ms  |
+| 10.122.66.105 |     38 | 337.17 ms  |
++---------------+--------+------------+
+
+通过host_summary_by_file_io_type 查看io具体发出的位置
+root@localhost:sys 11:41:05>select * from  host_summary_by_file_io_type;
++---------------+--------------------------------------+--------+---------------+-------------+
+| host          | event_name                           | total  | total_latency | max_latency |
++---------------+--------------------------------------+--------+---------------+-------------+
+| 10.122.66.105 | wait/io/file/innodb/innodb_log_file  |     20 | 272.58 ms     | 196.14 ms   |
+| 10.122.66.105 | wait/io/file/innodb/innodb_data_file |      7 | 38.08 ms      | 18.35 ms    |
+| 10.122.66.105 | wait/io/file/sql/binlog              |     10 | 26.47 ms      | 6.69 ms     |
+
+这个表没看明白
+select * from  host_summary_by_stages;
++------------+------------------------------------------------------+-------+---------------+-------------+
+| host       | event_name                                           | total | total_latency | avg_latency |
++------------+------------------------------------------------------+-------+---------------+-------------+
+| background | stage/innodb/buffer pool load                        |     1 | 77.49 ms      | 77.49 ms    |
+| localhost  | stage/innodb/alter table (end)                       |     1 | 22.51 ms      | 22.51 ms    |
+
+
+需要关注的指标是 rows_sent/total , rows_examined/total, full_scans, rows_affected是什么意思暂时没看懂
+root@localhost:sys 11:47:19>select * from host_summary_by_statement_latency;
++---------------+--------+---------------+-------------+--------------+-----------+---------------+---------------+------------+
+| host          | total  | total_latency | max_latency | lock_latency | rows_sent | rows_examined | rows_affected | full_scans |
++---------------+--------+---------------+-------------+--------------+-----------+---------------+---------------+------------+
+| localhost     |   8315 | 22.42 m       | 21.30 s     | 983.09 ms    |      5223 |         61843 |      17458904 |        107 |
+| 127.0.0.1     | 969122 | 20.70 m       | 59.65 s     | 43.59 s      | 136025975 |     203227330 |             0 |     310691 |
+
+
+这个表显示的是innodb buffer的分布情况，后面关于page的metric没看明白
+root@localhost:sys 02:22:52>select * from innodb_buffer_stats_by_schema;
++---------------+------------+------------+-------+--------------+-----------+-------------+
+| object_schema | allocated  | data       | pages | pages_hashed | pages_old | rows_cached |
++---------------+------------+------------+-------+--------------+-----------+-------------+
+| modeldatas    | 1.52 GiB   | 1.39 GiB   | 99571 |        99571 |     99571 |     1468936 |
+| dataserver    | 331.58 MiB | 302.22 MiB | 21221 |        21221 |     21221 |      214093 |
+
+
+从这个表可以看到大表具体在那张上
+root@localhost:sys 02:23:07>select * from innodb_buffer_stats_by_table;
++---------------+--------------------------------+------------+------------+-------+--------------+-----------+-------------+
+| object_schema | object_name                    | allocated  | data       | pages | pages_hashed | pages_old | rows_cached |
++---------------+--------------------------------+------------+------------+-------+--------------+-----------+-------------+
+| modeldatas    | db_monkey_part_liyang_relation | 1.15 GiB   | 1.06 GiB   | 75247 |        75247 |     75247 |     7207870 |
+
+
+
+这些后台进程都干什么的？
+root@localhost:sys 02:38:49>select * from io_by_thread_by_latency;
++----------------------------+--------+---------------+-------------+-------------+-------------+-----------+----------------+
+| user                       | total  | total_latency | min_latency | avg_latency | max_latency | thread_id | processlist_id |
++----------------------------+--------+---------------+-------------+-------------+-------------+-----------+----------------+
+| page_cleaner_thread        | 224823 | 3.55 m        | 6.73 us     | 10.23 ms    | 2.81 s      |        13 |           NULL |
+| io_write_thread            |  11816 | 2.17 m        | 1.13 us     | 11.04 ms    | 1.26 s      |         9 |           NULL |
+| srv_master_thread          |  29132 | 2.11 m        | 5.80 us     | 9.26 ms     | 1.68 s      |        18 |           NULL |
+| io_write_thread            |   5383 | 1.48 m        | 1.99 us     | 16.50 ms    | 1.25 s      |        11 |           NULL |
+| io_write_thread            |   4754 | 1.46 m        | 1.33 us     | 18.41 ms    | 1.36 s      |        12 |           NULL |
+| io_write_thread            |   4022 | 1.32 m        | 1.22 us     | 19.62 ms    | 1.81 s      |        10 |           NULL |
+| io_log_thread              |   6827 | 39.67 s       | 1.47 ms     | 5.81 ms     | 499.81 ms   |         4 |           NULL |
+| root@localhost             |  30043 | 22.75 s       | 802.88 ns   | 10.67 ms    | 1.56 s      |    324018 |         323993 |
+| dict_stats_thread          |    749 | 6.34 s        | 7.31 us     | 7.21 ms     | 1.30 s      |        24 |           NULL |
+| md_rw_athena@10.168.64.242 |    715 | 6.19 s        | 180.65 ns   | 4.60 ms     | 325.34 ms   |    287639 |         287614 |
+| md_rw_monk@10.162.67.71    |   2481 | 5.15 s        | 11.33 us    | 2.11 ms     | 32.71 ms    |    311727 |         311702 |
+| md_rw_athena@10.162.67.71  |    238 | 3.31 s        | 7.18 us     | 8.23 ms     | 381.08 ms   |    320054 |         320029 |
+| repl@10.161.233.80         | 268761 | 1.07 s        | 180.65 ns   | 3.97 us     | 181.91 ms   |       144 |            119 |
+| main                       |   1963 | 559.86 ms     | 143.59 ns   | 580.24 us   | 282.71 ms   |         1 |           NULL |
+| buf_dump_thread            |   3576 | 58.24 ms      | 822.95 ns   | 16.29 us    | 18.69 ms    |        23 |           NULL |
+| io_read_thread             |      4 | 30.13 ms      | 5.26 ms     | 7.53 ms     | 10.02 ms    |         6 |           NULL |
+| md_rw_monkey@10.168.64.242 |     30 | 918.98 us     | 8.08 us     | 30.63 us    | 71.09 us    |    323992 |         323967 |
+| io_read_thread             |      4 | 52.12 us      | 10.57 us    | 13.03 us    | 16.97 us    |         7 |           NULL |
+| io_read_thread             |      1 | 12.79 us      | 12.79 us    | 12.79 us    | 12.79 us    |         8 |           NULL |
++----------------------------+--------+---------------+-------------+-------------+-------------+-----------+----------------+
+
+从数据量角度反应io问题
+select * from io_global_by_file_by_bytes limit 3\G
+*************************** 1. row ***************************
+         file: @@datadir/modeldatas/db_monkey_part_liyang_relation.ibd
+   count_read: 349899
+   total_read: 5.34 GiB
+     avg_read: 16.00 KiB
+  count_write: 88073
+total_written: 3.72 GiB
+    avg_write: 44.28 KiB
+        total: 9.06 GiB
+    write_pct: 41.06
+
+
+从latency角度反应io问题
+select * from io_global_by_file_by_latency limit 3\G
+*************************** 1. row ***************************
+         file: @@datadir/modeldatas/db_monkey_part_liyang_relation.ibd
+        total: 445519
+total_latency: 7.44 m
+   count_read: 349899
+ read_latency: 2.98 m
+  count_write: 88073
+write_latency: 4.96 s
+   count_misc: 7547
+ misc_latency: 4.38 m
+
+
+在代码层面上定位io发出的位置
+select * from io_global_by_wait_by_bytes limit 3\G
+*************************** 1. row ***************************
+     event_name: innodb/innodb_data_file
+          total: 790223
+  total_latency: 17.29 m
+    min_latency: 0 ps
+    avg_latency: 1.31 ms
+    max_latency: 2.81 s
+     count_read: 529517
+     total_read: 8.08 GiB
+       avg_read: 16.00 KiB
+    count_write: 216084
+  total_written: 9.93 GiB
+    avg_written: 48.20 KiB
+total_requested: 18.02 GiB
+
+从latency纬度给出io等待情况
+select * from io_global_by_wait_by_latency limit 1\G
+*************************** 1. row ***************************
+   event_name: innodb/innodb_data_file
+        total: 790338
+total_latency: 17.30 m
+  avg_latency: 1.31 ms
+  max_latency: 2.81 s
+ read_latency: 4.90 m
+write_latency: 17.25 s
+ misc_latency: 12.12 m
+   count_read: 529536
+   total_read: 8.08 GiB
+     avg_read: 16.00 KiB
+  count_write: 216152
+total_written: 9.93 GiB
+  avg_written: 48.20 KiB
+1 row in set (0.00 sec)
+
+当下io情况？？
+select * from latest_file_io;
+
+为什么数据为空？
+select * from memory_by_host_by_current_bytes ;
++---------------+--------------------+-------------------+-------------------+-------------------+-----------------+
+| host          | current_count_used | current_allocated | current_avg_alloc | current_max_alloc | total_allocated |
++---------------+--------------------+-------------------+-------------------+-------------------+-----------------+
+| background    |                  0 | 0 bytes           | 0 bytes           | 0 bytes           | 0 bytes         |
+
+
+分配给mysql server的内存
+select * from memory_global_total;
++-----------------+
+| total_allocated |
++-----------------+
+| 133.16 MiB      |
++-----------------+
+
+列出了所有的metrics定义,分类和值
+root@localhost:sys 03:36:55>select Type from metrics group by Type;
++--------------------------------------+
+| Type                                 |
++--------------------------------------+
+| Global Status                        |
+| InnoDB Metrics - adaptive_hash_index |
+| InnoDB Metrics - buffer              |
+| InnoDB Metrics - buffer_page_io      |
+| InnoDB Metrics - change_buffer       |
+| InnoDB Metrics - compression         |
+| InnoDB Metrics - ddl                 |
+| InnoDB Metrics - dml                 |
+| InnoDB Metrics - icp                 |
+| InnoDB Metrics - index               |
+| InnoDB Metrics - lock                |
+| InnoDB Metrics - metadata            |
+| InnoDB Metrics - os                  |
+| InnoDB Metrics - purge               |
+| InnoDB Metrics - recovery            |
+| InnoDB Metrics - server              |
+| InnoDB Metrics - transaction         |
+| Performance Schema                   |
+| System Time                          |
++--------------------------------------+
+
+ps_check_lost_instrumentation 空表 ？？
+
+这个可以查看自增列的情况
+select * from schema_auto_increment_columns limit 1\G
+*************************** 1. row ***************************
+        table_schema: dataserver
+          table_name: center_category
+         column_name: cat_id
+           data_type: smallint
+         column_type: smallint(5) unsigned
+           is_signed: 0
+         is_unsigned: 1
+           max_value: 65535
+      auto_increment: 5408
+auto_increment_ratio: 0.0825
+1 row in set (0.06 sec)
+
+
+数据库组件一览
+select * from schema_object_overview;
++--------------------+---------------+-------+
+| db                 | object_type   | count |
++--------------------+---------------+-------+
+| cloudepc           | BASE TABLE    |     2 |
+| cloudepc           | INDEX (BTREE) |     7 |
+| dataserver         | BASE TABLE    |    28 |
+| dataserver         | INDEX (BTREE) |    89 |
+
+查看是否有冗余索引
+select * from schema_redundant_indexes\G
+
+查看锁等待状态
+select * from schema_table_lock_waits;
+
+schema_table_statistics & schema_table_statistics_with_buffer (??)
+
+schema_tables_with_full_table_scans  (??)
+
+当前连接的具体信息
+session
+
+目前没有涉及到ssl的东西
+session_ssl_status
+
+statement_analysis (??)
+
+从下面的表可以查看报错的问题sql （为什么看不到全文？)
+select query from statements_with_errors_or_warnings;
+
+可以查到是否有执行全表扫描的sql （？？）
+select * from statements_with_full_table_scans
+
+
+statements_with_runtimes_in_95th_percentile   (??)
+statements_with_sorting    (??)
+statements_with_temp_tables   (??)
+
+下面的表(sys中唯一一张基本表）是关于sys schema的设置,session中用户定义的参数可以覆盖表中的值，例如@sys.diagnostics.allow_i_s_tables='ON' ,如果停止用户定义参数的作用，可以把对应的值设置为null
+select * from sys_config;
++--------------------------------------+-------+---------------------+--------+
+| variable                             | value | set_time            | set_by |
++--------------------------------------+-------+---------------------+--------+
+| diagnostics.allow_i_s_tables         | OFF   | 2016-05-13 11:17:39 | NULL   |
+| diagnostics.include_raw              | OFF   | 2016-05-13 11:17:39 | NULL   |
+| ps_thread_trx_info.max_length        | 65535 | 2016-05-13 11:17:39 | NULL   |
+| statement_performance_analyzer.limit | 100   | 2016-05-13 11:17:39 | NULL   |
+| statement_performance_analyzer.view  | NULL  | 2016-05-13 11:17:39 | NULL   |
+| statement_truncate_len               | 64    | 2016-05-13 11:17:39 | NULL   |
++--------------------------------------+-------+---------------------+--------+
+
+diagnostics.allow_i_s_tables开启的话diagnostics()存储过程允许扫描information_schema.table中的表，导致性能冲击
+diagnostics.include_raw 开启的话diagnostics()存储过程会包括查询metrics视图的输出
+ps_thread_trx_info.max_length 限制由 ps_thread_trx_info()函数产生的最大json字串长度
+statement_performance_analyzer.limit 规定了视图返回的最大行数 （??）
+statement_performance_analyzer.view   用来指定用户自定义的输出视图名字,如果值有空格则翻译成为query,如果statement_performance_analyzer.limit大于0则query中不能含有limit语句
+
+
+调整sql显示长度可以让表中query信息显示完整
+set @sys.statement_truncate_len=600;
+select query from statements_with_temp_tables limit 1;
++--------------------------------------------------------------------------------------------------------------------------------------+
+| query                                                                                                                                |
++--------------------------------------------------------------------------------------------------------------------------------------+
+| SELECT `ifnull` ( MAX ( TIME ) , ? ) `Max_Time` FROM `information_schema` . `processlist` WHERE `COMMAND` = ? AND `info` NOT LIKE ?  |
++--------------------------------------------------------------------------------------------------------------------------------------+
+
+
+检查未使用的索引
+select * from schema_unused_indexes where index_name not like 'uk%';
++---------------+----------------------------+---------------------+
+| object_schema | object_name                | index_name          |
++---------------+----------------------------+---------------------+
+| cloudepc      | epc_goods_quote            | idx_seller_login_id |
+| cloudepc      | epc_seller_login_info      | idx_seller_id       |
+| dataserver    | center_category            | parent_id           |
+
+
+关于用户的统计信息
+select * from user_summary limit 1\G
+*************************** 1. row ***************************
+                  user: backup_all
+            statements: 36581
+     statement_latency: 29.28 m
+ statement_avg_latency: 48.03 ms
+           table_scans: 12861
+              file_ios: 988033
+       file_io_latency: 7.78 m
+   current_connections: 0
+     total_connections: 74
+          unique_hosts: 1
+        current_memory: 0 bytes
+total_memory_allocated: 0 bytes
+
+其实取的是user_summary 表的file_ios和file_io_latency 列的值
+select * from user_summary_by_file_io;
++----------------+--------+------------+
+| user           | ios    | io_latency |
++----------------+--------+------------+
+| background     | 401838 | 16.53 m    |
+
+关于io来自哪个代码文件的信息
+select * from user_summary_by_file_io_type;
++----------------+--------------------------------------+--------+-----------+-------------+
+| user           | event_name                           | total  | latency   | max_latency |
++----------------+--------------------------------------+--------+-----------+-------------+
+| background     | wait/io/file/innodb/innodb_data_file | 343497 | 12.16 m   | 2.81 s      |
+| background     | wait/io/file/innodb/innodb_log_file  |  56802 | 4.37 m    | 1.68 s      |
+
+
+看不明白(为什么只有后台线程和root的统计？）
+select * from user_summary_by_stages;
++------------+------------------------------------------------------+-------+---------------+-------------+
+| user       | event_name                                           | total | total_latency | avg_latency |
++------------+------------------------------------------------------+-------+---------------+-------------+
+| background | stage/innodb/buffer pool load                        |     1 | 77.49 ms      | 77.49 ms    |
+| root       | stage/innodb/alter table (end)                       |     1 | 22.51 ms      | 22.51 ms    |
+| root       | stage/innodb/alter table (read PK and internal sort) |     1 | 2.99 ms       | 2.99 ms     |
+| root       | stage/innodb/alter table (log apply index)           |     1 | 27.23 us      | 27.23 us    |
+| root       | stage/innodb/alter table (flush)                     |     2 | 26.26 us      | 13.13 us    |
++------------+------------------------------------------------------+-------+---------------+-------------+
+
+下面的表rows_affected列是什么意思？
+select * from user_summary_by_statement_latency;
++----------------+---------+---------------+-------------+--------------+-----------+---------------+---------------+------------+
+| user           | total   | total_latency | max_latency | lock_latency | rows_sent | rows_examined | rows_affected | full_scans |
++----------------+---------+---------------+-------------+--------------+-----------+---------------+---------------+------------+
+| backup_all     |   36581 | 29.28 m       | 1.21 m      | 2.23 s       | 241892722 |     241975729 |             0 |      12861 |
+| root           |  164196 | 26.42 m       | 45.44 s     | 3.90 s       |     15862 |      18843299 |      17632005 |        708 |
+
+下面按查询的类型来列出latency，行和full_scan信息
+select * from user_summary_by_statement_type;
+
+列出了sys版本和mysql版本
+select * from version;
++-------------+---------------+
+| sys_version | mysql_version |
++-------------+---------------+
+| 1.5.0       | 5.7.12-log    |
++-------------+---------------+
+
+按io发出的位置归类的信息
+select * from wait_classes_global_by_avg_latency;
++-----------------+-----------+---------------+-------------+-------------+-------------+
+| event_class     | total     | total_latency | min_latency | avg_latency | max_latency |
++-----------------+-----------+---------------+-------------+-------------+-------------+
+| wait/io/file    |   2631043 | 40.56 m       | 0 ps        | 924.92 us   | 2.81 s      |
+| wait/io/table   | 331080342 | 41.28 m       | 72.57 ns    | 7.48 us     | 1.18 m      |
+| wait/lock/table |    135127 | 256.02 ms     | 60.22 ns    | 1.89 us     | 284.18 us   |
++-----------------+-----------+---------------+-------------+-------------+-------------+
+
+这个表和上面的表的记录排列根据不同列值而已
+select * from wait_classes_global_by_latency;
+
+
+根据ip位置列出各io发出的归类信息
+select * from waits_by_host_by_latency;
++---------------+--------------------------------------+-----------+---------------+-------------+-------------+
+| host          | event                                | total     | total_latency | avg_latency | max_latency |
++---------------+--------------------------------------+-----------+---------------+-------------+-------------+
+| 10.122.66.105 | wait/io/file/innodb/innodb_log_file  |        82 | 489.70 ms     | 5.97 ms     | 196.14 ms   |
+| 10.122.66.105 | wait/io/table/sql/handler            |       122 | 435.92 ms     | 3.57 ms     | 156.38 ms   |
+| 10.122.66.105 | wait/io/file/innodb/innodb_data_file |        25 | 266.51 ms     | 10.66 ms    | 79.23 ms    |
+| 10.122.66.105 | wait/io/file/sql/binlog              |        18 | 46.30 ms      | 2.57 ms     | 6.69 ms     |
+| 10.122.66.105 | wait/lock/table/sql/handler          |        41 | 128.04 us     | 3.12 us     | 4.45 us     |
+| 10.122.66.105 | wait/io/file/sql/slow_log            |         3 | 60.64 us      | 20.21 us    | 37.49 us    |
+| 10.161.233.80 | wait/io/file/sql/binlog              |    288590 | 1.15 s        | 3.98 us     | 181.91 ms   |
+| 10.162.67.71  | wait/io/table/sql/handler            |  42361267 | 1.16 m        | 1.64 us     | 1.07 s      |
+| 10.162.67.71  | wait/io/file/innodb/innodb_data_file |      8720 | 1.15 m        | 7.89 ms     | 613.01 ms   |
+
+按用户纬度来归类
+select * from waits_by_user_by_latency;
++----------------+--------------------------------------+-----------+---------------+-------------+-------------+
+| user           | event                                | total     | total_latency | avg_latency | max_latency |
++----------------+--------------------------------------+-----------+---------------+-------------+-------------+
+| backup_all     | wait/io/table/sql/handler            | 241727499 | 28.96 m       | 7.19 us     | 1.18 m      |
+| backup_all     | wait/io/file/innodb/innodb_data_file |    941924 | 7.66 m        | 487.68 us   | 781.79 ms   |
+| backup_all     | wait/io/file/sql/FRM                 |     39013 | 5.02 s        | 128.70 us   | 226.16 ms   |
+
+根据class 作出的归类统计
+select * from waits_global_by_latency;
++--------------------------------------+-----------+---------------+-------------+-------------+
+| events                               | total     | total_latency | avg_latency | max_latency |
++--------------------------------------+-----------+---------------+-------------+-------------+
+| wait/io/table/sql/handler            | 331184823 | 41.28 m       | 7.48 us     | 1.18 m      |
+| wait/io/file/innodb/innodb_data_file |   1438510 | 28.96 m       | 1.21 ms     | 2.81 s      |
+| wait/io/file/innodb/innodb_log_file  |     75060 | 7.10 m        | 5.67 ms     | 2.14 s      |
+
+
+
+sys存储过程
+create_synonym_db()   用来创建镜像schema，其中的视图对应每张表
+CALL create_synonym_db('INFORMATION_SCHEMA', 'info');
+
+
+获取统计信息方法
+tee diag.out;
+CALL diagnostics(120, 30, 'current');     # 每隔30秒采样，运行时间最多为120秒
+notee;
+
+整个过程
+1.创建保存初始快照的临时表
+ CALL statement_performance_analyzer('create_tmp', 'mydb.tmp_digests_ini', NULL);
+2.生成快照
+CALL statement_performance_analyzer('snapshot', NULL, NULL);     # 默认是对performance_schema events_statements_summary_by_digest 表的内容进行快照，你也可以通过修改第二个参数明确指定表
+3.将快照保存到临时表
+CALL statement_performance_analyzer('save', 'mydb.tmp_digests_ini', NULL);
+4.等待1分钟
+DO SLEEP(60);
+5.创建一份新的快照
+CALL statement_performance_analyzer('snapshot', NULL, NULL);
+6.分析快照
+CALL statement_performance_analyzer('overall', NULL, 'with_runtimes_in_95th_percentile');  ＃ 第二个参数为null则使用当前快照，或者指定表
+7.基于当前快照和之前快照分析差异数据
+ CALL statement_performance_analyzer('delta', 'mydb.tmp_digests_ini', 'with_runtimes_in_95th_percentile');
+
+下面的例子是基于快照分析前10个full scan的查询
+CALL statement_performance_analyzer('snapshot', NULL, NULL);
+SET @sys.statement_performance_analyzer.limit = 10;
+ CALL statement_performance_analyzer('overall', NULL, 'with_runtimes_in_95th_percentile,with_full_table_scans');
+
+关于自定义视图的使用
+mysql> CREATE OR REPLACE VIEW mydb.my_statements AS
+    -> SELECT sys.format_statement(DIGEST_TEXT) AS query,
+    ->        SCHEMA_NAME AS db,
+    ->        COUNT_STAR AS exec_count,
+    ->        sys.format_time(SUM_TIMER_WAIT) AS total_latency,
+    ->        sys.format_time(AVG_TIMER_WAIT) AS avg_latency,
+    ->        ROUND(IFNULL(SUM_ROWS_SENT / NULLIF(COUNT_STAR, 0), 0)) AS rows_sent_avg,
+    ->        ROUND(IFNULL(SUM_ROWS_EXAMINED / NULLIF(COUNT_STAR, 0), 0)) AS rows_examined_avg,
+    ->        ROUND(IFNULL(SUM_ROWS_AFFECTED / NULLIF(COUNT_STAR, 0), 0)) AS rows_affected_avg,
+    ->        DIGEST AS digest
+    ->   FROM performance_schema.events_statements_summary_by_digest
+    -> ORDER BY SUM_TIMER_WAIT DESC;
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> CALL statement_performance_analyzer('create_table', 'mydb.digests_prev', NULL);
+Query OK, 0 rows affected (0.10 sec)
+
+shell> watch -n 60 "mysql sys --table -e \"
+> SET @sys.statement_performance_analyzer.view = 'mydb.my_statements';
+> SET @sys.statement_performance_analyzer.limit = 10;
+> CALL statement_performance_analyzer('snapshot', NULL, NULL);
+> CALL statement_performance_analyzer('delta', 'mydb.digests_prev', 'custom');
+> CALL statement_performance_analyzer('save', 'mydb.digests_prev', NULL);
+> \""
+
+对于所有后台线程停止/启动performance schema instrument 
+CALL ps_setup_disable_background_threads();
+CALL ps_setup_enable_background_threads();
+
+停止/启动某类的comsumer
+CALL ps_setup_disable_consumer('statement');
+CALL ps_setup_enable_consumer('statement');
+
+停止/启动特定的instrument
+CALL ps_setup_disable_instrument('wait/lock/metadata/sql/mdl');
+CALL ps_setup_enable_instrument('wait/lock/metadata/sql/mdl');
+停止所有mutex的instrument
+CALL ps_setup_disable_instrument('mutex');
+
+给定一个connection id禁止/启动这个链接线程的performance schema instrument
+CALL ps_setup_disable_thread(225);
+CALL ps_setup_enable_thread(225);
+停止当前线程
+CALL ps_setup_disable_thread(CONNECTION_ID());
+
+重新加载之前save的performance schema配置 #需要super权限
+ps_setup_reload_saved() 
+
+保存默认设置可以用来之后恢复（数字表示超时时间，有可能别的线程在执行同样操作，如果超过这个时间则该操作执行失败）
+CALL ps_setup_save(10);
+
+显示当前所有被disabled/enabled的 performance schema 配置，第一个参数表示是否显示disabled instrument，第二个表示是否显示disabled thread
+CALL ps_setup_show_disabled(TRUE, TRUE);
+CALL ps_setup_show_enabled(FALSE, FALSE);
+
+显示当前被disabled/enabled的consumer
+CALL ps_setup_show_disabled_consumers();
+CALL ps_setup_show_enabled_consumers();
+显示当前被disabled/enabled的instrument
+CALL ps_setup_show_disabled_instruments()
+CALL ps_setup_show_enabled_instruments()
+
+显示latency直方图
+CALL ps_statement_avg_latency_histogram()
+
+重新加载默认的performance schema配置
+ CALL ps_setup_reset_to_default(TRUE)   # true表示显示每条执行的语句
+
+调试观察某条语句
+1.首先从performance_schema.events_statements_summary_by_digest表中取得diest代码
+select DIGEST from performance_schema.events_statements_summary_by_digest where SCHEMA_NAME='dataserver';
+2.运行分析程序(第一个参数是md5码，第二个参数是运行的时间长度，第三个参数表示快照生成的间隔时间，第四个参数表示在启动分析前是否清空events_statements_history_long和events_stages_history_long表，第五个参数表示是否自动开启所需的consumer)
+CALL ps_trace_statement_digest('891ec6860f98ba46d89dd20b0c03652c', 10, 0.1, TRUE, TRUE);
+在实际运行中报错误
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'NULL' at line 1
+
+为一个指定的线程dump所有performance schema的数据为.dot formatted graph file
+第一个参数表示thread id,第二个参数表示dot文件的名字，第三个参数表示收集数据的最大秒数，如果null则为60秒，第四个参数为收集数据的间隔时间，null为1秒
+第五个参数为在开始追踪前是否重置所有performance schema的数据，第六个参数是否disable所有线程，enable所有instrment和consumer，第七个参数表示是否包括file:lineno在grash中
+CALL ps_trace_thread(25, CONCAT('/tmp/stack-', REPLACE(NOW(), ' ', '-'), '.dot'), NULL, NULL, TRUE, TRUE, TRUE);
+实际中运行报错
+The MySQL server is running with the --secure-file-priv option so it cannot execute this statement
+
+清理performance schema中的summary table
+CALL ps_truncate_all_tables(FALSE);
+
+判断一个表是否是视图基本表，临时表等
+call sys.table_exists('sys','sys_config',@re);
+select @re;
++------------+
+| @re        |
++------------+
+| BASE TABLE |
++------------+
+
+
+=======================================
+
+sys  函数使用
+
+给定的文件路径名抽取出schema名字
+SELECT sys.extract_schema_from_file_name('/data/mysql/dataserver/db_bank_keyword.ibd');
++---------------------------------------------------------------------------------+
+| sys.extract_schema_from_file_name('/data/mysql/dataserver/db_bank_keyword.ibd') |
++---------------------------------------------------------------------------------+
+| dataserver                                                                      |
++---------------------------------------------------------------------------------+
+
+sql_mode的添加和删除
+SET @@sql_mode = list_add(@@sql_mode, 'NO_ENGINE_SUBSTITUTION');
+SET @@sql_mode = list_drop(@@sql_mode, 'ONLY_FULL_GROUP_BY');
+
+查看是否账号是被启用的
+select sys.ps_is_account_enabled('10.%','md_rw_all');
++-----------------------------------------------+
+| sys.ps_is_account_enabled('10.%','md_rw_all') |
++-----------------------------------------------+
+| YES                                           |
++-----------------------------------------------+
+
+查看是否某个consumer被启用,如果不存在的consumer会返回NULL
+SELECT sys.ps_is_consumer_enabled('thread_instrumentation');
++------------------------------------------------------+
+| sys.ps_is_consumer_enabled('thread_instrumentation') |
++------------------------------------------------------+
+| YES                                                  |
++------------------------------------------------------+
+
+检查某个instrument是否默认是开启的
+SELECT sys.ps_is_instrument_default_enabled('memory/innodb/row_log_buf');
++-------------------------------------------------------------------+
+| sys.ps_is_instrument_default_enabled('memory/innodb/row_log_buf') |
++-------------------------------------------------------------------+
+| NO                                                                |
++-------------------------------------------------------------------+
+
+检查某个instrument是否是timed （这个什么意思 ？？）
+SELECT sys.ps_is_instrument_default_timed('memory/innodb/row_log_buf');
++-----------------------------------------------------------------+
+| sys.ps_is_instrument_default_timed('memory/innodb/row_log_buf') |
++-----------------------------------------------------------------+
+| NO                                                              |
++-----------------------------------------------------------------+
+
+查看是否对于某个connection ，performance schema instrument是否是enabled
+SELECT sys.ps_is_thread_instrumented(5879);
++-------------------------------------+
+| sys.ps_is_thread_instrumented(5879) |
++-------------------------------------+
+| YES                                 |
++-------------------------------------+
+
+查看某个连接id对应的使用账号
+select sys.ps_thread_account(sys.ps_thread_id(540288));
++-------------------------------------------------+
+| sys.ps_thread_account(sys.ps_thread_id(540288)) |
++-------------------------------------------------+
+| md_rw_athena@10.122.66.105                      |
++-------------------------------------------------+
+
+将某个connection id转化为performance schema id
+select sys.ps_thread_id(540288);
++--------------------------+
+| sys.ps_thread_id(540288) |
++--------------------------+
+|                   540313 |
++--------------------------+
+相当于 select THREAD_ID from performance_schema.threads where PROCESSLIST_ID=540288;
+
+对于给定thread id返回在performance schema中的 all statements, stages, and events 的stack (??看不懂)
+SELECT sys.ps_thread_stack(540313, TRUE) AS thread_stack;
++------------------------------------------------------------------------------------------------------------------------------------------------------+
+| thread_stack                                                                                                                                         |
++------------------------------------------------------------------------------------------------------------------------------------------------------+
+| {"rankdir": "LR","nodesep": "0.10","stack_created": "2016-05-31 16:17:39","mysql_version": "5.7.12-log","mysql_user": "root@localhost","events": []} |
++------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+下列4个视图的progress列显示的是执行进度,如果要看stage走到哪一步需要开启events_stages_current
+processlist
+session
+x$processlist
+x$session
+
+
+
+
+
+
+
+
+------------------------------------
+通过观察sys 的 schema_tables_with_full_table_scans表找出全表扫描行为最多的表
+比如观察到全表扫描最多的表db_offer_list,再定位查询
+select * from statements_with_full_table_scans where query like '%db_offer_list%';
+在输出结果的digest列得到该查询的指纹
+06168be625548b50e0662d65296f6e40
+通过下列查询可以看详细信息
+select * from events_statements_summary_by_digest where DIGEST='06168be625548b50e0662d65296f6e40'\G
+

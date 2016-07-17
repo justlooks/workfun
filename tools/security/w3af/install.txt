@@ -1,0 +1,12 @@
+# git clone https://github.com/andresriancho/w3af.git
+
+# mkdir python2.7
+# virtualenv --distribute python2.7
+强制切到python2.7版本
+# virtualenv --python=python2.7 venv
+
+进入虚拟环境
+. venv/bin/activate
+(venv) [root@internal_server2 w3af]# ./w3af_console
+(venv) [root@internal_server2 w3af]# . /tmp/w3af_dependency_install.sh
+

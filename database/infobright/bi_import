@@ -1,0 +1,139 @@
+bi数据导入流程
+创建临时表
+
+drop table db_order_info;
+drop table db_order_info_ext;
+drop table db_modify_price_note;
+drop table db_goods;
+drop table db_brand;
+drop table db_warehouse;
+drop table db_goods_tag_relation;
+
+
+CREATE TABLE `db_order_info` (
+  `order_id` int(11) NOT NULL DEFAULT '0',
+  `order_sn` varchar(20) NOT NULL DEFAULT '',
+  `warehouse_id` int(11) NOT NULL COMMENT '发货仓库id'
+) ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+CREATE TABLE `db_order_info_ext` (
+  `id` int(11) NOT NULL COMMENT '与db_order_info的order_id一一对应',
+  `achievement_sale1` varchar(64) DEFAULT NULL COMMENT '业绩归属直销',
+  `achievement_sale1_group` varchar(64) DEFAULT NULL COMMENT '业绩归属直销组',
+  `achievement_sale1_area` varchar(64) DEFAULT NULL COMMENT '业绩归属直销区域',
+  `achievement_sale1_big_area` varchar(64) DEFAULT NULL COMMENT '业绩归属直销大区',
+  `achievement_sale2` varchar(64) DEFAULT NULL COMMENT '业绩归属电销'
+  ) ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+CREATE TABLE `db_modify_price_note` (
+  `id` int(11) NOT NULL ,
+  `is_deleted` char(1) DEFAULT 'N' COMMENT '是否删除,Y删除，N未删除',
+  `order_id` int(11) DEFAULT NULL COMMENT '订单id',
+  `order_sn` varchar(20) DEFAULT NULL COMMENT '订单号',
+  `is_agree` int(4) NOT NULL DEFAULT '-1',
+  `order_type` varchar(10) DEFAULT NULL COMMENT '订单类型'
+) ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+ CREATE TABLE `db_goods` (
+  `goods_id` int(11) NOT NULL ,
+  `cat_id` smallint(5) NOT NULL DEFAULT '0',
+  `goods_sn` varchar(60) NOT NULL DEFAULT '' COMMENT '商品出厂编号',
+  `new_goods_sn` varchar(16) NOT NULL DEFAULT '0' COMMENT '2014年3月12日新版的商品编号',
+  `goods_name` varchar(120) NOT NULL DEFAULT '',
+  `brand_id` smallint(5) NOT NULL DEFAULT '0'
+) ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+
+ CREATE TABLE `db_brand` (
+  `brand_id` smallint(5) NOT NULL ,
+  `brand_name` varchar(60) NOT NULL DEFAULT ''
+)  ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+CREATE TABLE `db_warehouse` (
+    `warehouse_id` int(11) NOT NULL COMMENT '自增id',
+    `warehouse_name` varchar(50) NOT NULL COMMENT '仓库名称'
+    ) ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+CREATE TABLE `db_goods_tag_relation` (
+  `id` int(11)  NOT NULL ,
+  `goods_id` int(11)  NOT NULL COMMENT '商品ID',
+  `tag` varchar(64) NOT NULL COMMENT '商品标识'
+) ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+CREATE TABLE `uc_shop` (
+  `id` int(11) NOT NULL COMMENT '主键ID',
+  `user_id` int(11) DEFAULT NULL COMMENT '电商系统原有ID'
+) ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+CREATE TABLE `dw_product_cat` (
+  `id` int(11) NOT NULL ,
+  `product_name` varchar(50) NOT NULL,
+  `cat_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL
+) ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+CREATE TABLE `dw_customer_type_yqx` (
+  `id` int(11) NOT NULL ,
+  `is_deleted` varchar(2) DEFAULT '',
+  `customer_id` int(11) DEFAULT NULL,
+  `tag_name` varchar(64) DEFAULT NULL
+) ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+CREATE TABLE `dw_goods_back_amount` (
+  `id` int(11) NOT NULL ,
+  `new_goods_sn` varchar(20) DEFAULT NULL COMMENT '商品编码',
+  `order_sn` varchar(20) DEFAULT NULL COMMENT '订单编码',
+  `sku_back_amount` decimal(10,2) DEFAULT NULL COMMENT '商品回款金额',
+  `back_date` varchar(45) DEFAULT NULL COMMENT '回款日期',
+  `back_goods_number` int(11) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL
+) ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+insert into db_order_info (order_id,order_sn,warehouse_id) select order_id,order_sn,warehouse_id from ol_autoparts.db_order_info;
+insert into db_order_info_ext (id,achievement_sale1,achievement_sale1_group,achievement_sale1_area,achievement_sale1_big_area,achievement_sale2) select id,achievement_sale1,achievement_sale1_group,achievement_sale1_area,achievement_sale1_big_area,achievement_sale2 from ol_autoparts.db_order_info_ext;
+insert into db_modify_price_note (id,is_deleted,order_id,order_sn,is_agree,order_type) select id,is_deleted,order_id,order_sn,is_agree,order_type from ol_autoparts.db_modify_price_note;
+insert into db_goods (goods_id,cat_id,goods_sn,new_goods_sn,goods_name,brand_id) select goods_id,cat_id,goods_sn,new_goods_sn,goods_name,brand_id from ol_autoparts.db_goods;
+insert into db_brand (brand_id,brand_name) select brand_id,brand_name from ol_autoparts.db_brand;
+insert into db_warehouse (warehouse_id,warehouse_name) select warehouse_id,warehouse_name from ol_autoparts.db_warehouse;
+insert into db_goods_tag_relation (id,goods_id,tag) select id,goods_id,tag from ol_autoparts.db_goods_tag_relation;
+insert into uc_shop (id,user_id) select id,user_id from ucenter.uc_shop;
+insert into dw_product_cat (id,product_name,cat_id,product_id) select id,product_name,cat_id,product_id from tqdw.dw_product_cat;
+insert into dw_customer_type_yqx(id,is_deleted,customer_id,tag_name) select id,is_deleted,customer_id,tag_name from tqdw.dw_customer_type_yqx;
+insert into dw_goods_back_amount(id,new_goods_sn,order_sn,sku_back_amount,back_date,back_goods_number,user_id) select id,new_goods_sn,order_sn,sku_back_amount,back_date,back_goods_number,user_id from tqdw.dw_goods_back_amount;
+
+导出数据
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test db_goods --fields-enclosed-by=\" --fields-terminated-by=,
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test  db_order_info --fields-enclosed-by=\" --fields-terminated-by=,
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test db_order_info_ext --fields-enclosed-by=\" --fields-terminated-by=,
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test db_warehouse --fields-enclosed-by=\" --fields-terminated-by=,
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test db_brand --fields-enclosed-by=\" --fields-terminated-by=,
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test db_goods_tag_relation --fields-enclosed-by=\" --fields-terminated-by=,
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test db_modify_price_note --fields-enclosed-by=\" --fields-terminated-by=,
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test dw_product_cat --fields-enclosed-by=\" --fields-terminated-by=,
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test dw_customer_type_yqx --fields-enclosed-by=\" --fields-terminated-by=,
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test uc_shop --fields-enclosed-by=\" --fields-terminated-by=,
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  test dw_goods_back_amount --fields-enclosed-by=\" --fields-terminated-by=,
+
+导入数据
+LOAD DATA INFILE '/tmp/db_brand.txt' INTO TABLE db_brand FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+LOAD DATA INFILE '/tmp/db_order_info.txt' INTO TABLE db_order_info FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+LOAD DATA INFILE '/tmp/db_order_info_ext.txt' INTO TABLE db_order_info_ext FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+LOAD DATA INFILE '/tmp/db_warehouse.txt' INTO TABLE db_warehouse FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+LOAD DATA INFILE '/tmp/db_goods_tag_relation.txt' INTO TABLE db_goods_tag_relation FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+LOAD DATA INFILE '/tmp/db_modify_price_note.txt' INTO TABLE db_modify_price_note FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+LOAD DATA INFILE '/tmp/db_goods.txt' INTO TABLE db_goods FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+
+LOAD DATA INFILE '/tmp/uc_shop.txt' INTO TABLE uc_shop FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+LOAD DATA INFILE '/tmp/dw_product_cat.txt' INTO TABLE dw_product_cat FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+LOAD DATA INFILE '/tmp/dw_customer_type_yqx.txt' INTO TABLE dw_customer_type_yqx FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+LOAD DATA INFILE '/tmp/dw_goods_back_amount.txt' INTO TABLE dw_goods_back_amount FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';

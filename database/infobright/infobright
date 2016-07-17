@@ -1,0 +1,30 @@
+数据库加载
+# cd /usr/local/infobright
+#./postconfig.sh
+
+装载器切换
+使用mysql loader
+mysql> set @bh_dataformat='mysql';
+使用infobright loader 并使用binary data
+mysql> set @bh_dataformat='binary';
+使用infobright loader 并使用变长csv格式
+mysql> set @bh_dataformat='txt_variable';
+
+加载数据
+从mysql导出
+mysqldump -uroot --password=SzjXDk5f5QzALKde -P3307 --socket=/data/mysql3307/mysql.sock   -T/tmp  tqdw dw_goods_back_amount --fields-enclosed-by=\" --fields-terminated-by=,
+
+整理表ddl操作
+sed -n '/CREATE/,/^)/p' dw_customer_type_yqx.sql |sed -e 's/AUTO_INCREMENT//' -e '/KEY/d' -e 's/ENGINE.*;/ENGINE=BRIGHTHOUSE DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;/' -e 's/unsigned//'
+
+数据导入前(注意，切换数据库后都需要执行一次)
+infobright:ucenter 02:20:23>set character_set_database='utf8';
+
+db_goods需要数据整理
+UPDATE db_goods SET goods_desc = REPLACE(REPLACE(goods_desc, '\r', ''), '\n', '');
+update db_goods set goods_desc = replace(replace(goods_desc,',',':'),',',':');
+update db_goods set car_model = replace(replace(car_model,',',':'),',',':');
+
+LOAD DATA INFILE '/tmp/dw_goods_back_amount.txt' INTO TABLE dw_goods_back_amount FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\\';
+或者
+LOAD DATA INFILE '/tmp/db_brand.txt' INTO TABLE db_brand FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '';

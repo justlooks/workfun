@@ -1,0 +1,76 @@
+替换int 为bigint ,tinyint为bigint
+%s/ int([0-9]\+)/ bigint/
+%s/ tinyint([0-9]\+)/ bigint/
+%s/ mediumint([0-9]\+)/ bigint/
+%s/ smallint([0-9]\+)/ bigint/
+替换varchar为string
+%s/ varchar([0-9]\+)/ string/
+替换decimal为double
+%s/ decimal([0-9,]\+)/ double/
+去掉unsigned
+%s/unsigned//
+去掉NOT NULL
+%s/NOT NULL//
+去掉AUTO_INCREMENT
+%s/AUTO_INCREMENT//
+去掉default
+%s/DEFAULT '[^']*'//
+去掉default null
+%s/DEFAULT NULL//
+去掉text
+%s/text/string/
+
+制造数据文件
+mysqldump -uroot -pPy1Pu7WmThSbnBTL -h127.0.0.1 --where='order_id<1000' -T /tmp/  --fields-terminated-by="," --fields-enclosed-by="\"" --lines-terminated-by="\n" ol_autoparts db_order_info
+
+修改数据文件(去掉整数和小数的引号)
+sed -r 's/"([0-9.-]+)"/\1/g' db_order_info.txt >  db_order_info.go
+
+去掉日期前面的引号
+sed -r 's/"([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})"/\1/g' db_order_info.go > db_order_info.go2
+
+
+导入时间测试 754045行数据  upload时间 5分钟
+
+
+数据处理流程
+1，首先将数据导入到一个空表，然后对datetime字段做update将null设置为默认值
+2, 制作update语句
+:g!/datetime/d
+:%s/datetime.*$//
+:%s/`\([^`]\+\)`/update table set \1='1976-01-01 00:00:00' where \1 is null;/
+%s/[^a-z_]//g
+%s/\(.*\)/update table set \1='1976-01-01 00:00:00' where \1 is null;/
+
+
+update db_order_info set gmt_modified='1976-01-01 00:00:00' where gmt_modified is null;
+＃删除列值中的回车
+update db_order_info SET address = TRIM(TRAILING '\n' FROM address);
+UPDATE db_order_info SET comment = REPLACE(REPLACE(comment, '\r', ''), '\n', '');
+UPDATE db_order_info SET consignee = REPLACE(REPLACE(consignee, '\r', ''), '\n', '');
+UPDATE db_order_info SET postscript = REPLACE(REPLACE(postscript, '\r', ''), '\n', '');
+UPDATE db_order_info SET address = REPLACE(REPLACE(address, '\r', ''), '\n', '');
+UPDATE db_order_info SET company_name = REPLACE(REPLACE(company_name, '\r', ''), '\n', '');
+
+#将order_flags, postscript中的逗号换成冒号
+update db_order_info set order_flags=replace(order_flags,",",":");
+update db_order_info set postscript=replace(postscript,",",":");
+update db_order_info set comment=replace(comment,",",":");
+update db_order_info set attributes=replace(attributes,",",":");
+update db_order_info set address=replace(address,",",":")
+update db_order_info set company_name=replace(company_name,",",":");
+
+# db_order_goods
+update db_order_info set goods_name=replace(goods_name,",",":");
+goods_name
+
+
+3, 导出数据
+
+处理奇葩数据
+sed 's/^M\\//' db_order_info.go2 > db_order_info.go3
+
+问题数据
+1231
+3330
+2880

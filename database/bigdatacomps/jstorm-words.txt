@@ -1,0 +1,76 @@
+开发相关
+Topology  : 作为一个数据处理的逻辑，是jstorm的运行单位,包括组件spout和bolt
+Spout     : 从外部数据源抽取数据，转化为内部使用的数据(Tuple）
+Bolt	  : 从spout或者上游bolt接受数据并处理，最末端bolt可以将数据写出到外部数据源
+Tuple     : 是一个value list,是中间数据流转的基本单位
+Stream    : 所有的源源不断流动的tuple组成stream
+Stream grouping : 将stream中的tuple按照某个特征分组
+Trident   : 在stream做流转的时候有时候需要将中间结果保存，防止bolt所在的机器挂掉，而造成数据丢失，而trident可以用来将数据做批量处理写入数据库，并提供一些关系数据库所特有的聚合函数功能,如果需要做关键性的任务需要放在事务中需要用到这个功能
+
+Spout只会收到两个消息，一种是tuple被执行成功的acker,另一种是fail msg,如果spout不对tuple打上message id，它就不会收到acker或者fail信息
+
+运维相关
+task    ：运行topolopy组件(spout,bolt)的基本单位
+worker  : task都运行在worker中，worker为进程，task为线程
+
+
+ISpout接口方法
+open()   : 用于做一些初始化动作，传入上下文
+close()  : 在集群环境中不能保证被调用，唯一可能是storm运行在单机本地环境
+activate()  : 当进入active状态时被调用(spout准备运行中)，jstorm命令可以切换active/deactive模式
+deactive()  : 当进入deactive状态时被调用
+nextTuple() : 将tuple发射到collector
+ack()       : 通常这个方法用来实现将对应的msgid移出重试队列，以不做重试操作
+fail()      : 当对应tuple未被正常处理后会调用这个函数，用来进行重试机制
+
+IBolt接口方法
+prepare()  : 在bolt task在worker中准备执行时调用，做初始化准备运行环境用
+execute()  : 执行具体处理tuple的逻辑，不一定马上执行（如在做统计，join时会延时执行）,另外通过调用prepare传入的OutputCollector的ack或者fail方法返回处理结果,通过Config.TOPOLOGY_MESSAGE_TIMEOUT可以修改message fail的超时时间
+cleanup()  : 当bolt中止时执行调用（不能保证被执行）
+
+IBasicBolti接口能够在执行每个tuple后自动进行确认（ack）
+如果使用IRichBolt接口你需要自己实现ack方法
+
+
+参数解释
+topology相关参数
+topology.kryo.register   :  是否使用kryo作为底层序列化的框架
+topology.max.spout.pending  : spout task中能够容纳最大的tuple数目
+topology.workers   :    允许在cluster中启动的最大线程数目，这个需要和parallelism参数一起调节
+topology.acker.executors   : 启动多少个executor负责acker操作
+
+worker相关metrics
+topology.ctrl.buffer.size    : 用来指定DisruptorQueue的长度
+
+
+
+客户端配置
+main/java/com/alibaba/jstorm/client/ConfigExtension.java
+
+topology.debug.recv.tuple    : 每收到一条tuple就打印一条debug信息
+topology.receiver.buffer.size    : 每个worker会有独立的接收线程如果从外部接受的消息超过这个buffer值时，会将所有保存的消息推送给executor队列
+topology.transfer.buffer.size    : executor的out-queue队列满后会有线程负责将这个队列中的tuples搬运到worker的transfer-queue队列中，这个参数定义了这个transfer-queue队列的大小
+topology.max.task.parallelism    : 调整task中的最大可以spawn的线程数目(只在本地模式有用吗topology.max.task.parallelism)
+
+客户端命令
+rebalance命令，对topology进行调整
+jstorm-core/src/main/java/backtype/storm/command/rebalance.java
+jstorm rebalance -r Batch  simple.yaml    # -r 表示递归，对每个task作用(reassignFlag),
+jstorm rebalance Batch 3 simple.yaml      # 3 表示延时时间 （delaySecs）
+这个命令可以调整的东西
+topology.spout.parallel
+topology.bolt.parallel
+topology.workers
+
+
+
+
+一个worker绝对不会运行不同topology的task的
+
+
+
+
+========================================
+关于grouping
+在GrouperType.java文件中定义了jstorm支持的所有种类的grouping方式
+global, fields, all, shuffle, none, custom_obj, custom_serialized, direct, local_or_shuffle, localFirst

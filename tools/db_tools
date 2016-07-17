@@ -1,0 +1,20 @@
+1. 格式化建表语句
+perl  -ne 's/(CREATE TABLE )`([^`]+)`/\1\2/;s/^(\)\s)[^;]+(;)/\1\2/;s/^(\s+PRIMARY[^,]+),/\1/;if(/(?<!PRIMARY )KEY/){next};print' aa.sql
+DROP TABLE IF EXISTS `center_category`;
+CREATE TABLE center_category (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '商品分类ID',
+  `is_deleted` char(1) DEFAULT 'N' COMMENT '分类是否删除',
+  `gmt_create` datetime DEFAULT NULL COMMENT '创建时间，入库时间',
+  `gmt_modified` datetime DEFAULT NULL COMMENT '修改时间',
+  `first_letter` char(1) NOT NULL DEFAULT '' COMMENT '''首字母''',
+  `cat_name` varchar(90) NOT NULL DEFAULT '' COMMENT '商品分类名称',
+  `parent_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '父级分类ID',
+  `sort_order` tinyint(1) unsigned NOT NULL DEFAULT '50' COMMENT '分类排序',
+  `cat_pic` varchar(255) NOT NULL COMMENT '商品分类图片',
+  `cat_kind` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT '0:易损件；1:全车件 2:二者无法区分',
+  `cat_level` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT '分类级别：1.一级分类 2.二级分类 3.三级分类',
+  `cat_code` varchar(20) NOT NULL DEFAULT '' COMMENT '编码',
+  `vehicle_code` varchar(10) NOT NULL DEFAULT '' COMMENT '车辆种类码：C-乘用车 H-商用车 CH-乘用商用车',
+  PRIMARY KEY (`id`)
+) ;
+

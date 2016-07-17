@@ -26,3 +26,86 @@ start mysqld
 
 5,时区系统表填充(time_zone,time_zone_name,time_zone_transition,time_zone_transition_type)
 mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql
+
+6.账户过期时间设置
+设置 default_password_lifetime为非0，则标示自动密码过期天数
+手动设置过期   ALTER USER 'jeffrey'@'localhost' PASSWORD EXPIRE [NEVER]; 
+设置过期间隔时间   ALTER USER 'jeffrey'@'localhost' PASSWORD EXPIRE INTERVAL 90 DAY;
+当使用非交互模式下，当密码过期则会自动推出session，要防止这点需要以--connect-expired-password选项启动mysqld
+
+
+7. GTID
+格式为
+GTID = source_id:transaction_id
+
+设置可读
+SET @@global.read_only = ON;
+stop service
+vi my.cnf
+gtid-mode                        = ON
+enforce-gtid-consistency
+start service
+
+root@localhost:(none) 11:56:50>change master to master_host='10.165.97.219' ,master_port=3306, master_user='repl',master_password='BzzT4bJIb6hFDj8u',MASTER_AUTO_POSITION = 1;
+Query OK, 0 rows affected, 2 warnings (0.06 sec)
+
+root@localhost:(none) 11:59:52>show warnings\G
+*************************** 1. row ***************************
+  Level: Note
+   Code: 1759
+Message: Sending passwords in plain text without SSL/TLS is extremely insecure.
+*************************** 2. row ***************************
+  Level: Note
+   Code: 1760
+Message: Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+2 rows in set (0.00 sec)
+
+在master上打开只读限制
+SET @@global.read_only = OFF;
+
+
+
+设置默认的密码认证插件
+default_authentication_plugin
+设置默认的密码过期期限
+default_password_lifetime
+
+去掉每次登录时mysql: [Warning] Using a password on the command line interface can be insecure.的信息
+mysql_config_editor 用来将登录信息记录到文件中（默认.mylogin.cnf)
+如果需要自己指定密码文件需要定义MYSQL_TEST_LOGIN_FILE环境变量
+mysql程序默认使用client的登录信息,用下列命令写入登录信息
+mysql_config_editor set --login-path=alex --host=localhost --user=root --password
+如果要打印某条登录信息
+mysql_config_editor print --login-path=alex  (或者--all打印所有）
+
+
+
+===========================
+慢查询监控
+5.7 使用performance_schema 的events_statements_summary_by_digest表监控
+监控内容 ： 
+SUM_ROWS_SENT
+SUM_ROWS_EXAMINED
+SUM_CREATED_TMP_DISK_TABLES
+SUM_CREATED_TMP_TABLES
+SUM_SELECT_FULL_JOIN
+SUM_ERRORS
+
+查询分析
+select * from  events_statements_summary_by_digest where SCHEMA_NAME not in ('NULL','performance_schema')\G
+
+找出5个延迟总时间比较长的sql
+SELECT * FROM performance_schema.events_statements_summary_by_digest ORDER BY SUM_TIMER_WAIT DESC LIMIT 5
+
+
+可以使用truncate table来清理统计纪录
+
+当这个表达到最大限制时，会有一条记录记载其他情况的查询，如果DIGEST为null，但是COUNT_STAR的值超过50%时，说明需要增大这个表的大小，调节performance_schema_digests_size参数，如果COUNT_STAR为5%，说明这个表大小合适，有代表性
+
+
+
+
+清理操作
+查询未使用的索引
+ select * from sys.schema_unused_indexes;
+

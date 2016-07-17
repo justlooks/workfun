@@ -1,0 +1,12 @@
+mysqld_multi can not work if i define a shutdown account with password
+http://bugs.mysql.com/bug.php?id=81682&thanks=4
+一种方法是将关停用户的密码去掉
+另一种方法是修改mysqld_multi代码
+将下列行
+216   my $com= join ' ', 'my_print_defaults', @defaults_options, $group;
+改为
+216	my $com= join ' ', 'my_print_defaults -s', @defaults_options, $group;
+
+
+use rename table cause mysql restart error
+http://bugs.mysql.com/bug.php?id=82060&thanks=2&notify=3

@@ -1,0 +1,9 @@
+下载
+#wget https://github.com/sullo/nikto/archive/master.zip
+
+安装
+解压即可使用
+
+扫描
+perl nikto.pl -h 115.29.220.178
+
