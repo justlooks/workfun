@@ -1,0 +1,5 @@
+如何往kali系统中插入一个用户
+useradd -m clemie
+# passwd clemie
+# usermod -a -G sudo clemie
+# chsh -s /bin/bash clemie
