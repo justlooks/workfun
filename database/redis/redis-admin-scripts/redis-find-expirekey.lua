@@ -1,4 +1,4 @@
-# 将过期时间为－1的key筛选出来
+# 将过期时间为－1的key筛选出来,然后置一个过期时间
 local keys=redis.call('keys','*');
 local exs={};
 for _,v in next,keys,nil do
@@ -6,12 +6,13 @@ for _,v in next,keys,nil do
   print(_,v);
   if ttl < 0 then
     exs[#exs + 1] = v;
+    redis.call('expire',v,28800);
   end
 end
 return exs;
 
 运行命令
-redis-cli -a xZ7ScgiMV1Acv3h4 -n 20 --eval "test.lua" 0
+redis-cli -a xZ7ScgiMV1Acv3h4 -n 20 --eval "redis-find-expirekey.lua" 0
 
 
 # 找出对应ip 连接redis的哪个库
