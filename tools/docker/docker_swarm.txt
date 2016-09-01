@@ -1,0 +1,5 @@
+安全组需要开放TCP 22端口和80端口（ssh http）
+安装docker_swam集群
+正式的集群需要5台机器 （primary manager,secondary manager,swarm node1 ,swarm node2,discovery backend)
+
+

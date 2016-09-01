@@ -1,0 +1,21 @@
+关于容器本身的监控(注意内存如果没有做限制的化limit显示的是host的总内存量
+# docker stats --no-stream 994068ed7c06
+CONTAINER           CPU %               MEM USAGE / LIMIT     MEM %               NET I/O             BLOCK I/O           PIDS
+994068ed7c06        0.07%               626.6 MB / 4.142 GB   15.13%              140 B / 648 B       0 B / 3.234 GB      34
+
+以上可能比较粗略，可以是用cgroup来做比较精细的监控
+http://www.cnblogs.com/xuxinkun/p/5541894.html
+
+另外也可以通过remote api来取容器资源分配的数据
+ echo -e "GET /containers/json HTTP/1.0\r\n" | nc -U /var/run/docker.sock
+HTTP/1.0 200 OK
+Content-Type: application/json
+Server: Docker/1.11.2 (linux)
+Date: Thu, 21 Jul 2016 10:04:03 GMT
+
+[{"Id":"994068ed7c061d0dbc8805f31dc0d32138a87cf12462af6b9d75a70ded0f7910","Names":["/mytomcat_web_1"],"Image":"centos/mysql57","ImageID":"sha256:0d509a55a8387e1f2ea10d3cea291d021b4d61f6690b2de7536bfb1378fbb002","Command":"/tmp/mysqlstart.sh","Created":1469084831,"Ports":[{"PrivatePort":8080,"Type":"tcp"},{"PrivatePort":80,"Type":"tcp"}],"Labels":{"License":"GPLv2","Vendor":"CentOS","com.docker.compose.config-hash":"19465ffb1f0fcaf1976f92a73fed6ca67c3291cd7746693b3944c1f6622da609","com.docker.compose.container-number":"1","com.docker.compose.oneoff":"False","com.docker.compose.project":"mytomcat","com.docker.compose.service":"web","com.docker.compose.version":"1.8.0-rc1"},"State":"running","Status":"Up 2 hours","HostConfig":{"NetworkMode":"mytomcat_web_net"},"NetworkSettings":{"Networks":{"mytomcat_web_net":{"IPAMConfig":{"IPv4Address":"192.168.2.67"},"Links":null,"Aliases":null,"NetworkID":"","EndpointID":"dd55fd73de7dc8baabc32978d1757bdad7740f219a1c77b3c59f60b41c33d49a","Gateway":"192.168.2.1","IPAddress":"192.168.2.67","IPPrefixLen":24,"IPv6Gateway":"","GlobalIPv6Address":"","GlobalIPv6PrefixLen":0,"MacAddress":"02:42:c0:a8:02:43"}}},"Mounts":[]},{"Id":"8ca3285369eeb97f07866699893d9c3df44bdd9f73cc9e1e2ad8c5590984e735","Names":["/mytomcat_db_1"],"Image":"centos/mysql57","ImageID":"sha256:0d509a55a8387e1f2ea10d3cea291d021b4d61f6690b2de7536bfb1378fbb002","Command":"/tmp/mysqlstart.sh","Created":1469084825,"Ports":[{"PrivatePort":80,"Type":"tcp"},{"PrivatePort":3306,"Type":"tcp"}],"Labels":{"License":"GPLv2","Vendor":"CentOS","com.docker.compose.config-hash":"f0aadf11d630825cd1c0bf2242212d22256b88402806cda8aa00a52a45f5c54d","com.docker.compose.container-number":"1","com.docker.compose.oneoff":"False","com.docker.compose.project":"mytomcat","com.docker.compose.service":"db","com.docker.compose.version":"1.8.0-rc1"},"State":"running","Status":"Up 2 hours","HostConfig":{"NetworkMode":"mytomcat_web_net"},"NetworkSettings":{"Networks":{"mytomcat_web_net":{"IPAMConfig":{"IPv4Address":"192.168.2.68"},"Links":null,"Aliases":null,"NetworkID":"","EndpointID":"82447313c2e91ee0a740b64e998cab0475e709946829c7bcbd1f7d34bce0e192","Gateway":"192.168.2.1","IPAddress":"192.168.2.68","IPPrefixLen":24,"IPv6Gateway":"","GlobalIPv6Address":"","GlobalIPv6PrefixLen":0,"MacAddress":"02:42:c0:a8:02:44"}}},"Mounts":[]}]
+
+
+
+关于容器内应用的监控
+

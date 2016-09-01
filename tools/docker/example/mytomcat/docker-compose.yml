@@ -1,0 +1,45 @@
+version: '2'
+
+services:
+  web:
+    image: centos/tomcat7
+    expose:
+        - "8080"
+    ports:
+        - "80:8080"
+    tty: true
+    stdin_open: true
+    environment:
+        - JAVA_HOME=/opt/jdk1.7.0_55
+        - CATALINA_HOME=/opt/apache-tomcat
+    links:
+       - db
+    networks:
+       web_net:
+          ipv4_address: 192.168.2.67
+  db:
+   image: centos/mysql57
+   tty: true
+   stdin_open: true
+   volumes:
+       - /data
+   environment:
+       - MYSQL_ROOT_PASSWORD=123456
+       - MYSQL_USER=clemie
+       - MYSQL_USER_PASSWORD=123456
+   expose:
+       - "3306"
+   networks:
+      web_net:
+         ipv4_address: 192.168.2.68
+
+networks:
+   web_net:
+     driver: bridge
+     driver_opts:
+       com.docker.network.enable_ipv6: "false"
+     ipam:
+       driver: default
+       config:
+        - subnet: 192.168.2.0/24
+          gateway: 192.168.2.1

@@ -109,3 +109,26 @@ SELECT * FROM performance_schema.events_statements_summary_by_digest ORDER BY SU
 查询未使用的索引
  select * from sys.schema_unused_indexes;
 
+开启multi-threads replication功能后日志出现信息
+2016-08-06T09:57:17.095852+08:00 520464 [Note] Multi-threaded slave statistics for channel '': seconds elapsed = 122; events assigned = 8958977; worker queues filled over overrun level = 0; waited due a Worker queue full = 0; waited due the total size = 126702; waited at clock conflicts = 0 waited (count) when Workers occupied = 197348 waited when Workers occupied = 0
+
+每隔120秒刷一次
+seconds elapsed 就是上一次统计跟这一次统计的时间间隔。
+events assigned：总共有多少个event被分配执行，计的是总数。
+worker queues filled over overrun level：多线程同步中，worker 的私有队列长度超长的次数，计的是总数。
+waited due a Worker queue full ：因为worker的队列超长而产生等待的次数，计的是总数。
+waited due the total size ：超过最大size的次数，这个由参数slave_pending_jobs_size_max  指定。
+slave_pending_jobs_size_max 设置不能小于 max_allowed_packet
+waited at clock conflicts ：因为逻辑时间产生冲突的等待时间，单位是纳秒。
+waited (count) when Workers occupied ：因为workder被占用而出现等待的次数。（总计值）。
+waited when Workersoccupied ：因为workder被占用而出现等待的总时间，总计值，单位是纳秒。
+
+相关设置参数
+slave-parallel-type=type
+
+
+关于page cleaner的提示
+2016-08-06T08:50:36.828527+08:00 0 [Note] InnoDB: page_cleaner: 1000ms intended loop took 4186ms. The settings might not be optimal. (flushed=163 and evicted=0, during the time.)
+
+如果evicted不为0则存在innodb buffer 不够的可能,flushed则为从刷新列表中刷行的page数目即dirty page的数目
+下一次刷新时间为1000ms + 3000ms ,而 4186ms表示实际刷新的时间
