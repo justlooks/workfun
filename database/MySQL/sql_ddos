@@ -1,0 +1,11 @@
+fill disk
+create table filldisk(c varchar(1000));
+insert into filldisk values(repeat('x',1000)),(repeat('y',1000)),(repeat('z',1000));
+insert into filldisk select a.c from filldisk a, filldisk b, filldisk c,filldisk d,filldisk e;
+record number is select  pow(pow(3,5),5);
+
+fill cpu
+select md5(a.c),md5(b.c) from filldisk a,filldisk b order by rand();
+
+force disk I/O
+set session tmp_table_size=1024*4;

