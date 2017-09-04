@@ -5,19 +5,23 @@
 #
 #####################################
 
-BASEDIR="/opt/mysql_xtrbackup/$(hostname)"
+BASEDIR="/usr/local/MySQL_DB_Backup/mysql_xtrbackup/$(hostname)"
 WORKPREFIX="full_inc_"
 DAY=$(($(date +%u)-1))
 WORKDIR=${WORKPREFIX}$(date +%Y_%m_%d -d "${DAY} days ago")
 SSAP="mypass"
 USER="myuser"
-HOST="hostip"
-CMD="xtrabackup --backup --user=${USER} --password=${SSAP} --host=${HOST} "
+HOST="myip"
+CMD="xtrabackup --backup --compress --user=${USER} --password=${SSAP} --host=${HOST} "
 OP=("full" "inc" "inc" "inc" "inc" "inc" "inc")
-
+LOGFILE="/tmp/mysql_xtrbak.log"
+exec &> >(tee -a "$LOGFILE")
+echo "[info] $(date '+%Y-%m-%d %H:%M:%S') backup start..."
 if [ ! -d ${BASEDIR} ];then
+    mkdir -p ${BASEDIR}
     echo "[op] create basedir ${BASEDIR}"
-f ${BASEDIR}
+fi
+cd ${BASEDIR}
 if [ ! -d ${WORKDIR} ];then
     mkdir ${WORKDIR}
     echo "[op] create workdir : ${WORKDIR}"
@@ -32,7 +36,7 @@ echo "[op] do ${OP[${DAY}]} backup"
 CMD=${CMD}" --target-dir=./${OP[${DAY}]}_${DAY}"
 ${CMD}
 echo "[op] ${CMD}"
-echo "[info] gut gemacht"
+echo "[info] $(date '+%Y-%m-%d %H:%M:%S') gut gemacht"
 
 
 ------------------------------------
@@ -51,6 +55,10 @@ echo "[info] gut gemacht"
                 ├── inc_04
                 ├── inc_05
                 └── inc_06
+
+前置操作，创建备份用户，安装xtrabackup在备份机器
+CREATE USER 'backup_xtr'@'127.0.0.1' identified by 'xxx';
+GRANT RELOAD, PROCESS, LOCK TABLES, REPLICATION CLIENT ON *.* TO 'backup_xtr'@'127.0.0.1';
  
 关于备份数据的合并处理和恢复 
 恢复机器上安装qpress
