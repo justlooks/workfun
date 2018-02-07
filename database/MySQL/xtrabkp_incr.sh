@@ -27,9 +27,10 @@ if [ ! -d ${WORKDIR} ];then
     echo "[op] create workdir : ${WORKDIR}"
 fi
 cd ${WORKDIR}
-if [ "${DAY}" -ne 0 ];then    # not full backup day
+if [ "${OP[${DAY}]}" != "full" ];then    # not full backup day
     LASTDAY=$((${DAY}-1))
     LASTDIR=${OP[${LASTDAY}]}_${LASTDAY}
+    echo "[op] add incremental base dir ${LASTDIR}"
     CMD=${CMD}" --incremental-basedir=./${LASTDIR}"
 fi
 echo "[op] do ${OP[${DAY}]} backup"
@@ -79,3 +80,4 @@ xtrabackup --copy-back --target-dir=./full_0/
 chown -R mysql:mysql schema
 chown mysql:mysql ibdata1
 
+如果需要调整全备份的日子则对应调整OP数组中full元素的位置
